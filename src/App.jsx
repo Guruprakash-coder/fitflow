@@ -198,6 +198,20 @@ export default function App() {
 
   const timerRef = useRef(null);
 
+  // Status feedback state
+  const [statusMessage, setStatusMessage] = useState(null);
+
+  const showStatus = (text, type = "info") => {
+    setStatusMessage({ text, type });
+  };
+
+  useEffect(() => {
+    if (statusMessage) {
+      const timer = setTimeout(() => setStatusMessage(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [statusMessage]);
+
   // --- THEME SYNC EFFECT ---
   useEffect(() => {
     if (isDarkMode) {
@@ -390,7 +404,7 @@ export default function App() {
   const handleManualWorkoutSubmit = async (e) => {
     e.preventDefault();
     if (!token && !isGuest) {
-      alert("Please login or continue as Guest to record workouts!");
+      showStatus("Please login or continue as Guest to record workouts!", "error");
       return;
     }
 
@@ -416,7 +430,7 @@ export default function App() {
 
       // Recalculate local mock stats
       recalculateGuestStats(updated, foodLogs);
-      alert("Workout recorded locally (Guest Mode)!");
+      showStatus("Workout recorded locally (Guest Mode)!", "success");
     } else {
       // Save to database
       try {
@@ -431,10 +445,10 @@ export default function App() {
 
         if (!res.ok) throw new Error("Failed to save workout to database.");
 
-        alert("Workout saved successfully to cloud!");
+        showStatus("Workout saved successfully to cloud!", "success");
         fetchBackendData(); // refresh API stats & list
       } catch (err) {
-        alert("Error logging workout: " + err.message);
+        showStatus("Error logging workout: " + err.message, "error");
       }
     }
   };
@@ -447,6 +461,7 @@ export default function App() {
       localStorage.setItem("fitflow_guest_workouts", JSON.stringify(updated));
       setWorkoutLogs(updated);
       recalculateGuestStats(updated, foodLogs);
+      showStatus("Workout log deleted locally", "success");
     } else {
       try {
         const res = await fetch(`/api/workouts/${logId}`, {
@@ -455,8 +470,9 @@ export default function App() {
         });
         if (!res.ok) throw new Error("Failed to delete log from database.");
         fetchBackendData();
+        showStatus("Workout log deleted from cloud!", "success");
       } catch (err) {
-        alert("Error deleting workout: " + err.message);
+        showStatus("Error deleting workout: " + err.message, "error");
       }
     }
   };
@@ -503,7 +519,7 @@ export default function App() {
       }
     } catch (err) {
       console.error("Error searching food API:", err);
-      alert("Error searching food database. Check your internet connection.");
+      showStatus("Error searching food database. Check your internet connection.", "error");
     } finally {
       setIsSearchingFood(false);
     }
@@ -512,7 +528,7 @@ export default function App() {
   const handleAddFoodLog = async (foodItem, servingGrams) => {
     const valGrams = parseFloat(servingGrams);
     if (isNaN(valGrams) || valGrams <= 0) {
-      alert("Please enter a valid weight in grams!");
+      showStatus("Please enter a valid weight in grams!", "error");
       return;
     }
     const multiplier = valGrams / 100;
@@ -533,7 +549,7 @@ export default function App() {
       localStorage.setItem("fitflow_guest_foods", JSON.stringify(updated));
       setFoodLogs(updated);
       recalculateGuestStats(workoutLogs, updated);
-      alert(`Logged: ${newLog.food_name} (${valGrams}g) locally!`);
+      showStatus(`Logged: ${newLog.food_name} (${valGrams}g) locally!`, "success");
     } else {
       try {
         const res = await fetch("/api/food-logs", {
@@ -545,13 +561,13 @@ export default function App() {
           body: JSON.stringify(newLog)
         });
         if (res.ok) {
-          alert(`Logged: ${newLog.food_name} (${valGrams}g) synced to Neon Database!`);
+          showStatus(`Logged: ${newLog.food_name} (${valGrams}g) synced to Neon Database!`, "success");
           fetchBackendData();
         } else {
           throw new Error();
         }
       } catch (err) {
-        alert("Failed to sync food log to database.");
+        showStatus("Failed to sync food log to database.", "error");
       }
     }
   };
@@ -560,7 +576,7 @@ export default function App() {
     e.preventDefault();
     const grams = parseFloat(manualFoodForm.grams);
     if (isNaN(grams) || grams <= 0) {
-      alert("Please enter a valid weight in grams!");
+      showStatus("Please enter a valid weight in grams!", "error");
       return;
     }
     const newLog = {
@@ -580,7 +596,7 @@ export default function App() {
       localStorage.setItem("fitflow_guest_foods", JSON.stringify(updated));
       setFoodLogs(updated);
       recalculateGuestStats(workoutLogs, updated);
-      alert("Manual food logged locally!");
+      showStatus("Manual food logged locally!", "success");
     } else {
       try {
         const res = await fetch("/api/food-logs", {
@@ -592,13 +608,13 @@ export default function App() {
           body: JSON.stringify(newLog)
         });
         if (res.ok) {
-          alert("Manual food logged successfully!");
+          showStatus("Manual food logged successfully!", "success");
           fetchBackendData();
         } else {
           throw new Error();
         }
       } catch (err) {
-        alert("Failed to save manual food log.");
+        showStatus("Failed to save manual food log.", "error");
       }
     }
 
@@ -620,6 +636,7 @@ export default function App() {
       localStorage.setItem("fitflow_guest_foods", JSON.stringify(updated));
       setFoodLogs(updated);
       recalculateGuestStats(workoutLogs, updated);
+      showStatus("Food log deleted locally", "success");
     } else {
       try {
         const res = await fetch(`/api/food-logs/${logId}`, {
@@ -628,11 +645,12 @@ export default function App() {
         });
         if (res.ok) {
           fetchBackendData();
+          showStatus("Food log deleted from cloud!", "success");
         } else {
           throw new Error();
         }
       } catch (err) {
-        alert("Failed to delete food log.");
+        showStatus("Failed to delete food log.", "error");
       }
     }
   };
@@ -846,7 +864,7 @@ export default function App() {
     const ex = activeWorkoutList[exIndex];
     const completedSets = activeSetsCompleted[exIndex] || 0;
     if (completedSets === 0) {
-      alert("Perform at least one set before logging!");
+      showStatus("Perform at least one set before logging!", "error");
       return;
     }
 
@@ -869,18 +887,18 @@ export default function App() {
           body: JSON.stringify(payload)
         });
         if (res.ok) {
-          alert(`Logged: ${ex.name} (${completedSets} sets) synced to Cloud!`);
+          showStatus(`Logged: ${ex.name} (${completedSets} sets) synced to Cloud!`, "success");
           fetchBackendData();
         } else {
           throw new Error();
         }
       } catch (err) {
-        alert("Failed to sync log online. Saving locally...");
+        showStatus("Failed to sync log online. Saving locally...", "info");
         saveWorkoutLocally(payload);
       }
     } else {
       saveWorkoutLocally(payload);
-      alert(`Logged: ${ex.name} (${completedSets} sets) saved locally (Guest Mode)!`);
+      showStatus(`Logged: ${ex.name} (${completedSets} sets) saved locally (Guest Mode)!`, "success");
     }
   };
 
@@ -1049,6 +1067,38 @@ export default function App() {
             </button>
           ))}
         </div>
+
+        {/* STATUS NOTIFICATION BANNER */}
+        {statusMessage && (
+          <div className="mb-6 animate-fadeIn transition-all duration-300">
+            <div className={`p-3.5 rounded-2xl border flex items-center justify-between shadow-sm backdrop-blur-md ${
+              statusMessage.type === "error"
+                ? "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400"
+                : statusMessage.type === "success"
+                ? "bg-green-500/10 border-green-500/20 text-green-600 dark:text-green-400"
+                : "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400"
+            }`}>
+              <div className="flex items-center space-x-2.5">
+                {statusMessage.type === "error" ? (
+                  <span className="w-2 h-2 rounded-full bg-red-600 animate-ping"></span>
+                ) : statusMessage.type === "success" ? (
+                  <span className="w-2 h-2 rounded-full bg-green-600 animate-pulse"></span>
+                ) : (
+                  <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                )}
+                <span className="text-xs font-bold tracking-wide">{statusMessage.text}</span>
+              </div>
+              <button 
+                onClick={() => setStatusMessage(null)} 
+                className="text-slate-400 hover:text-slate-655 dark:hover:text-white transition-colors p-1 rounded-lg hover:bg-slate-200/40 dark:hover:bg-gray-800/50"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* TAB 1: AUTHENTICATION */}
         {activeTab === "login" && (
