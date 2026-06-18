@@ -106,6 +106,11 @@ const playBeep = (frequency, duration) => {
 };
 
 export default function App() {
+  // --- THEME STATE ---
+  const [isDarkMode, setIsDarkMode] = useState(
+    localStorage.getItem("fitflow_theme") === "light" ? false : true
+  );
+
   // --- STATE VARIABLES ---
   const [activeTab, setActiveTab] = useState("dashboard");
   const [isGuest, setIsGuest] = useState(false);
@@ -173,6 +178,19 @@ export default function App() {
 
   const timerRef = useRef(null);
 
+  // --- THEME SYNC EFFECT ---
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add("dark");
+      document.body.className = "dark-theme";
+      localStorage.setItem("fitflow_theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      document.body.className = "light-theme";
+      localStorage.setItem("fitflow_theme", "light");
+    }
+  }, [isDarkMode]);
+
   // --- INITIAL LOAD & SYNC ---
   useEffect(() => {
     // Select daily quote
@@ -233,7 +251,7 @@ export default function App() {
     return () => clearTimeout(timerRef.current);
   }, [timerIsActive, timerSecondsLeft]);
 
-  // --- DOCK API FETCH WRAPPER ---
+  // --- API FETCH WRAPPER ---
   const fetchBackendData = async () => {
     if (!token) return;
     try {
@@ -550,7 +568,7 @@ export default function App() {
       });
     }
 
-    // Ensure every day has exercises (fallback if library filter is too narrow)
+    // Ensure every day has exercises
     routine.forEach((dayRoutine) => {
       if (dayRoutine.exercises.length === 0) {
         dayRoutine.exercises = lib.slice(0, 3);
@@ -676,45 +694,65 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col justify-between">
-      {/* BRAND & HEADER BAR (Gives required professional look) */}
-      <header className="sticky top-0 z-50 glass-panel border-b border-gray-800 shadow-xl backdrop-blur-md">
+      {/* BRAND & HEADER BAR */}
+      <header className="sticky top-0 z-50 glass-panel border-b border-slate-200/50 dark:border-gray-800 shadow-lg backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-red-600 to-blue-600 flex items-center justify-center shadow-lg shadow-red-500/20">
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
             </div>
             <div>
-              <span className="font-extrabold text-xl tracking-tight bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">FitFlow</span>
-              <span className="hidden md:inline-block ml-2 text-xs font-semibold px-2 py-0.5 rounded bg-gray-800 text-gray-400 border border-gray-700">PRO FREE</span>
+              <span className="font-extrabold text-xl tracking-tight text-slate-800 dark:text-white">
+                Gs <span className="bg-gradient-to-r from-red-500 to-blue-500 bg-clip-text text-transparent">FitFlow</span>
+              </span>
+              <span className="hidden md:inline-block ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20">
+                PRO
+              </span>
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             {/* MANDATORY BUTTON LABELED EXACTLY "Built for Digital Heroes" */}
             <a
               href="https://digitalheroesco.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="relative group overflow-hidden px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-emerald-400 border border-emerald-500/30 transition-all duration-300 hover:text-white hover:border-emerald-400 hover:shadow-[0_0_15px_rgba(16,185,129,0.3)] bg-[#0c1220]"
+              className="relative group overflow-hidden px-4 py-2 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider text-red-600 dark:text-red-400 border border-red-500/30 transition-all duration-300 hover:text-white hover:bg-red-600 dark:hover:text-white dark:hover:bg-red-600 hover:shadow-[0_0_15px_rgba(220,38,38,0.3)] bg-transparent"
             >
-              <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-emerald-500/10 to-cyan-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
               Built for Digital Heroes
             </a>
 
+            {/* LIGHT / DARK MODE TOGGLE */}
+            <button
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-gray-800/80 dark:hover:bg-gray-700/80 text-slate-500 dark:text-gray-400 border border-slate-200 dark:border-gray-700/50 transition-colors"
+              title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {isDarkMode ? (
+                <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+
             {user ? (
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
                 <div className="hidden sm:block text-right">
-                  <div className="text-sm font-bold text-gray-200">{user.name}</div>
-                  <div className="text-xs text-gray-400">{user.email}</div>
+                  <div className="text-xs font-bold text-slate-700 dark:text-gray-200">{user.name}</div>
+                  <div className="text-[10px] text-slate-500 dark:text-gray-400">{user.email}</div>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="p-2 rounded-lg bg-gray-800/80 hover:bg-red-500/10 text-gray-400 hover:text-red-400 border border-gray-700/50 transition-colors"
+                  className="p-2 rounded-xl bg-slate-100 hover:bg-red-500/10 dark:bg-gray-800/80 dark:hover:bg-red-500/10 text-slate-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 border border-slate-200 dark:border-gray-700/50 transition-colors"
                   title="Logout"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
                 </button>
@@ -722,33 +760,33 @@ export default function App() {
             ) : (
               <button
                 onClick={() => setActiveTab("login")}
-                className="px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-emerald-500 to-cyan-500 text-black hover:brightness-110 shadow-lg shadow-emerald-500/15 transition-all"
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/10 transition-all"
               >
-                Sign In
+                Login
               </button>
             )}
           </div>
         </div>
       </header>
 
-      {/* MAIN LAYOUT */}
+      {/* MAIN CONTAINER */}
       <main className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 flex-grow">
         
-        {/* DEV INFO HEADER BAR (Ensures contact details are clearly visible) */}
-        <div className="mb-6 p-3 rounded-xl bg-gray-900/50 border border-gray-800 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-400">
-          <div className="flex items-center space-x-2">
-            <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span><strong>Developer:</strong> Guruprakash S</span>
-            <span className="text-gray-600">|</span>
-            <span><strong>Email:</strong> <a href="mailto:guruprakash6999@gmail.com" className="text-cyan-400 hover:underline">guruprakash6999@gmail.com</a></span>
+        {/* DEVELOPER PROFILE DETAILS (Mandatory Visibility) */}
+        <div className="mb-6 p-3 rounded-2xl glass-panel flex flex-col sm:flex-row items-center justify-between text-xs text-slate-600 dark:text-gray-400 border border-slate-200/50 dark:border-gray-800/80 shadow-md">
+          <div className="flex flex-wrap justify-center sm:justify-start items-center gap-2">
+            <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span>
+            <span><strong>Engineer:</strong> Guruprakash S</span>
+            <span className="text-slate-300 dark:text-gray-700">|</span>
+            <span><strong>Email:</strong> <a href="mailto:guruprakash6999@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">guruprakash6999@gmail.com</a></span>
           </div>
           <div className="mt-2 sm:mt-0 text-center sm:text-right font-medium">
-            Status: {isGuest ? <span className="text-yellow-500">Guest Mode (Local DB)</span> : token ? <span className="text-emerald-400">Synced to PostgreSQL Cloud</span> : <span className="text-gray-500">Unauthenticated</span>}
+            Database: {isGuest ? <span className="text-yellow-600 dark:text-yellow-500">Local (Guest Mode)</span> : token ? <span className="text-green-600 dark:text-green-400">Connected to Neon Postgres</span> : <span className="text-slate-400 dark:text-gray-500">Unauthenticated</span>}
           </div>
         </div>
 
         {/* NAVIGATION TABS */}
-        <div className="flex space-x-1 p-1 bg-gray-900/80 backdrop-blur border border-gray-800 rounded-2xl mb-8 overflow-x-auto">
+        <div className="flex space-x-1 p-1 bg-slate-100 dark:bg-gray-900/80 backdrop-blur border border-slate-200 dark:border-gray-800 rounded-2xl mb-8 overflow-x-auto">
           {[
             { id: "dashboard", label: "Dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
             { id: "calculator", label: "Macro Calc", icon: "M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" },
@@ -759,10 +797,10 @@ export default function App() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap ${
+              className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 whitespace-nowrap border ${
                 activeTab === tab.id
-                  ? "bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-400 border border-emerald-500/30 shadow-lg"
-                  : "text-gray-400 hover:text-gray-200 hover:bg-gray-800/40 border border-transparent"
+                  ? "bg-red-500/10 dark:bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/20 dark:border-red-500/30 shadow-md"
+                  : "text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 hover:bg-slate-200/50 dark:hover:bg-gray-800/40 border-transparent"
               }`}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -773,30 +811,30 @@ export default function App() {
           ))}
         </div>
 
-        {/* TAB 1: LOGIN/REGISTER */}
+        {/* TAB 1: AUTHENTICATION */}
         {activeTab === "login" && (
           <div className="max-w-md mx-auto">
-            <div className="glass-panel rounded-3xl p-8 border border-gray-800 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl"></div>
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl"></div>
+            <div className="glass-panel rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl"></div>
 
               <div className="text-center mb-6">
-                <h2 className="text-2xl font-extrabold tracking-tight text-white mb-2">
+                <h2 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white mb-2">
                   {authMode === "login" ? "Welcome Back" : "Join FitFlow"}
                 </h2>
-                <p className="text-sm text-gray-400">
-                  {authMode === "login" ? "Sign in to synchronize workouts on PostgreSQL database" : "Create an account to keep your fitness dashboard up to date"}
+                <p className="text-sm text-slate-500 dark:text-gray-400">
+                  {authMode === "login" ? "Sign in to synchronize workouts on Neon Postgres" : "Create an account to keep your fitness dashboard up to date"}
                 </p>
               </div>
 
               {authError && (
-                <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-400 font-medium text-center">
+                <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-600 dark:text-red-400 font-medium text-center">
                   {authError}
                 </div>
               )}
 
               {authSuccess && (
-                <div className="mb-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 font-medium text-center animate-bounce">
+                <div className="mb-4 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-xs text-green-700 dark:text-green-400 font-medium text-center animate-bounce">
                   {authSuccess}
                 </div>
               )}
@@ -804,49 +842,49 @@ export default function App() {
               <form onSubmit={handleAuthSubmit} className="space-y-4">
                 {authMode === "register" && (
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Full Name</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wide mb-1">Full Name</label>
                     <input
                       type="text"
                       required
                       value={authName}
                       onChange={(e) => setAuthName(e.target.value)}
                       placeholder="Guruprakash S"
-                      className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                     />
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Email Address</label>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wide mb-1">Email Address</label>
                   <input
                     type="email"
                     required
                     value={authEmail}
                     onChange={(e) => setAuthEmail(e.target.value)}
                     placeholder="guruprakash6999@gmail.com"
-                    className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wide mb-1">Password</label>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wide mb-1">Password</label>
                   <input
                     type="password"
                     required
                     value={authPassword}
                     onChange={(e) => setAuthPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                   />
                 </div>
 
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-emerald-500 to-cyan-500 text-black font-bold rounded-xl shadow-lg hover:brightness-110 active:scale-98 transition-all flex items-center justify-center space-x-2 text-sm"
+                  className="w-full mt-2 py-3 px-4 bg-gradient-to-r from-red-600 to-red-700 text-white font-bold rounded-xl shadow-lg hover:brightness-110 active:scale-98 transition-all flex items-center justify-center space-x-2 text-sm"
                 >
                   {loading ? (
-                    <svg className="animate-spin h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -859,21 +897,20 @@ export default function App() {
               <div className="mt-6 text-center space-y-3">
                 <button
                   onClick={() => setAuthMode(authMode === "login" ? "register" : "login")}
-                  className="text-xs text-emerald-400 hover:underline"
+                  className="text-xs text-red-600 dark:text-red-400 hover:underline"
                 >
                   {authMode === "login" ? "Don't have an account? Sign Up" : "Already registered? Login"}
                 </button>
 
                 <div className="relative flex py-2 items-center">
-                  <div className="flex-grow border-t border-gray-800"></div>
-                  <span className="flex-shrink mx-4 text-gray-500 text-xs">or</span>
-                  <div className="flex-grow border-t border-gray-800"></div>
+                  <div className="flex-grow border-t border-slate-200 dark:border-gray-800"></div>
+                  <span className="flex-shrink mx-4 text-slate-400 dark:text-gray-500 text-xs font-semibold">or</span>
+                  <div className="flex-grow border-t border-slate-200 dark:border-gray-800"></div>
                 </div>
 
-                {/* GUEST MODE OPTION (Critical for simple user evaluation) */}
                 <button
                   onClick={handleContinueAsGuest}
-                  className="w-full py-2.5 px-4 bg-gray-800 hover:bg-gray-700 border border-gray-700/80 text-gray-300 font-semibold rounded-xl text-xs transition-colors"
+                  className="w-full py-2.5 px-4 bg-slate-200/60 hover:bg-slate-200 dark:bg-gray-800 dark:hover:bg-gray-700 border border-slate-300/50 dark:border-gray-700 text-slate-700 dark:text-gray-300 font-bold rounded-xl text-xs transition-colors"
                 >
                   Continue as Guest (Try Offline)
                 </button>
@@ -886,42 +923,42 @@ export default function App() {
         {activeTab === "dashboard" && (
           <div className="space-y-8 animate-fadeIn">
             {/* HERO MOTIVATION CARD */}
-            <div className="relative glass-panel rounded-3xl p-6 md:p-8 border border-gray-800 overflow-hidden shadow-2xl">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-tr from-emerald-500/10 to-cyan-500/10 rounded-full blur-3xl"></div>
+            <div className="relative glass-panel rounded-3xl p-6 md:p-8 overflow-hidden shadow-xl">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-tr from-red-500/5 to-blue-500/5 rounded-full blur-3xl"></div>
               <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
                 <div>
-                  <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight leading-none mb-3">
+                  <h1 className="text-3xl md:text-4xl font-extrabold text-slate-800 dark:text-white tracking-tight leading-none mb-3">
                     Hi, {user ? user.name : "Athlete"}!
                   </h1>
-                  <p className="text-gray-400 text-sm max-w-lg mb-4">
+                  <p className="text-slate-500 dark:text-gray-400 text-sm max-w-lg mb-4">
                     "{currentQuote}"
                   </p>
                   <div className="flex flex-wrap gap-3">
                     <button
                       onClick={() => setActiveTab("workout-generator")}
-                      className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-cyan-500 text-black text-xs font-bold rounded-xl shadow-lg hover:brightness-110 transition-all"
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md transition-all"
                     >
                       Generate New Routine
                     </button>
                     {!user && (
                       <button
                         onClick={() => setActiveTab("login")}
-                        className="px-4 py-2 bg-gray-800 border border-gray-700 text-gray-300 text-xs font-bold rounded-xl hover:bg-gray-700 transition-all"
+                        className="px-4 py-2 bg-slate-200/80 hover:bg-slate-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 text-xs font-bold rounded-xl border border-slate-300/50 dark:border-gray-700 transition-all"
                       >
                         Enable Cloud Storage
                       </button>
                     )}
                   </div>
                 </div>
-                <div className="w-full md:w-auto flex flex-col items-center justify-center p-4 bg-gray-950/40 rounded-2xl border border-gray-800 max-w-[240px] mx-auto md:mx-0">
-                  <span className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">DAILY TARGET</span>
-                  <span className="text-4xl font-black text-emerald-400">
+                <div className="w-full md:w-auto flex flex-col items-center justify-center p-4 bg-slate-100/50 dark:bg-gray-950/40 rounded-2xl border border-slate-200 dark:border-gray-800/80 max-w-[240px] mx-auto md:mx-0">
+                  <span className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-1">DAILY TARGET</span>
+                  <span className="text-4xl font-black text-red-600 dark:text-red-400">
                     {localStorage.getItem("fitflow_profile") 
                       ? JSON.parse(localStorage.getItem("fitflow_profile")).targetCal 
                       : "2,000"
                     }
                   </span>
-                  <span className="text-xs text-gray-400 mt-1">kcal (Macros setup below)</span>
+                  <span className="text-xs text-slate-500 dark:text-gray-400 mt-1">kcal (Macros setup below)</span>
                 </div>
               </div>
             </div>
@@ -929,19 +966,19 @@ export default function App() {
             {/* ANALYTICS CARDS */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: "Workouts Completed", val: apiStats.total_workouts, desc: "Total sessions logged", color: "from-emerald-400 to-emerald-600" },
-                { label: "Total Volume", val: `${apiStats.total_volume} kg`, desc: "Accumulated weight", color: "from-cyan-400 to-cyan-600" },
-                { label: "Top Exercise", val: apiStats.popular_exercise, desc: "Most logged movement", color: "from-purple-400 to-purple-600" },
-                { label: "Workout Streak", val: `${apiStats.streak} Days`, desc: "Consecutive log days", color: "from-yellow-400 to-orange-500" }
+                { label: "Workouts Completed", val: apiStats.total_workouts, desc: "Total sessions logged", color: "from-red-500 to-red-700" },
+                { label: "Total Volume", val: `${apiStats.total_volume} kg`, desc: "Accumulated weight", color: "from-blue-500 to-blue-700" },
+                { label: "Top Exercise", val: apiStats.popular_exercise, desc: "Most logged movement", color: "from-purple-500 to-purple-700" },
+                { label: "Workout Streak", val: `${apiStats.streak} Days`, desc: "Consecutive log days", color: "from-orange-500 to-yellow-500" }
               ].map((stat, i) => (
-                <div key={i} className="glass-panel rounded-2xl p-5 border border-gray-800 shadow-lg flex flex-col justify-between">
-                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{stat.label}</span>
+                <div key={i} className="glass-panel rounded-2xl p-5 shadow-md flex flex-col justify-between">
+                  <span className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase tracking-wider">{stat.label}</span>
                   <div className="my-3">
                     <span className={`text-2xl md:text-3xl font-black bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>
                       {stat.val}
                     </span>
                   </div>
-                  <span className="text-[10px] md:text-xs text-gray-400 font-medium">{stat.desc}</span>
+                  <span className="text-[10px] md:text-xs text-slate-500 dark:text-gray-400 font-medium">{stat.desc}</span>
                 </div>
               ))}
             </div>
@@ -949,30 +986,30 @@ export default function App() {
             {/* WATER TRACKER & WEIGHT GRAPH */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* WATER TARGET CARD */}
-              <div className="glass-panel rounded-3xl p-6 border border-gray-800 shadow-xl flex flex-col justify-between relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-2xl"></div>
+              <div className="glass-panel rounded-3xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl"></div>
                 <div>
-                  <h3 className="text-lg font-bold text-white mb-2 flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2 flex items-center">
+                    <svg className="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                     </svg>
                     Hydro Hydration Tracker
                   </h3>
-                  <p className="text-xs text-gray-400 mb-6">
+                  <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">
                     Track your daily fluid intake. Your goal is 3,000ml (3.0L) of water.
                   </p>
                 </div>
 
                 <div className="flex flex-col items-center my-4 space-y-4">
-                  {/* GLASS VISUAL REPRESENTATION */}
-                  <div className="relative w-28 h-40 border-4 border-gray-700/60 rounded-b-2xl rounded-t-lg overflow-hidden bg-gray-950/60 shadow-inner">
+                  {/* GLASS VISUAL */}
+                  <div className="relative w-28 h-40 border-4 border-slate-300 dark:border-gray-700/80 rounded-b-2xl rounded-t-lg overflow-hidden bg-slate-100/80 dark:bg-gray-950/60 shadow-inner">
                     <div
-                      className="absolute bottom-0 w-full bg-gradient-to-t from-cyan-600/80 to-cyan-400/80 transition-all duration-700 ease-out flex items-center justify-center"
+                      className="absolute bottom-0 w-full bg-gradient-to-t from-blue-600 to-blue-500 transition-all duration-700 ease-out flex items-center justify-center"
                       style={{ height: `${Math.min(100, (waterIntake / 3000) * 100)}%` }}
                     >
                       <div className="w-full h-2 bg-white/20 absolute top-0 blur-xs"></div>
                       {waterIntake > 0 && (
-                        <span className="text-[10px] font-extrabold text-cyan-900 tracking-wider">
+                        <span className="text-[10px] font-extrabold text-white tracking-wider">
                           {Math.round((waterIntake / 3000) * 100)}%
                         </span>
                       )}
@@ -980,21 +1017,21 @@ export default function App() {
                   </div>
 
                   <div className="text-center">
-                    <span className="text-2xl font-black text-cyan-400">{waterIntake}</span>
-                    <span className="text-gray-400 text-sm font-semibold"> / 3,000 ml</span>
+                    <span className="text-2xl font-black text-blue-600 dark:text-blue-400">{waterIntake}</span>
+                    <span className="text-slate-400 dark:text-gray-400 text-sm font-semibold"> / 3,000 ml</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mt-4">
                   <button
                     onClick={() => changeWater(-250)}
-                    className="py-2.5 rounded-xl text-xs font-bold bg-gray-900 hover:bg-gray-800 text-cyan-400 border border-cyan-500/20 active:scale-95 transition-all"
+                    className="py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-gray-900 dark:hover:bg-gray-800 text-blue-600 dark:text-blue-400 border border-blue-500/10 active:scale-95 transition-all"
                   >
                     - 250ml
                   </button>
                   <button
                     onClick={() => changeWater(250)}
-                    className="py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500 to-cyan-600 text-black active:scale-95 shadow-lg shadow-cyan-500/10 hover:brightness-105 transition-all"
+                    className="py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white active:scale-95 shadow-md shadow-blue-500/10 transition-all"
                   >
                     + 250ml
                   </button>
@@ -1002,27 +1039,25 @@ export default function App() {
               </div>
 
               {/* WEIGHT LOGGER & GRAPH */}
-              <div className="glass-panel rounded-3xl p-6 border border-gray-800 shadow-xl flex flex-col justify-between">
+              <div className="glass-panel rounded-3xl p-6 shadow-xl flex flex-col justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-white mb-2 flex items-center">
-                    <svg className="w-5 h-5 mr-2 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2 flex items-center">
+                    <svg className="w-5 h-5 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 12l3-3 3 3 4-4M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
                     </svg>
                     Weight Progress Analysis
                   </h3>
-                  <p className="text-xs text-gray-400 mb-4">
-                    Monitor body weight fluctuations over the last 7 entries (Local Storage).
+                  <p className="text-xs text-slate-500 dark:text-gray-400 mb-4">
+                    Monitor body weight fluctuations over the last 7 entries.
                   </p>
                 </div>
 
-                {/* CUSTOM SVG RESPONSIVE CHART (No external packages needed) */}
-                <div className="bg-gray-950/40 border border-gray-900 rounded-2xl p-3 h-40 flex items-center justify-center relative overflow-hidden">
+                <div className="bg-slate-100/50 dark:bg-gray-950/40 border border-slate-200 dark:border-gray-900 rounded-2xl p-3 h-40 flex items-center justify-center relative overflow-hidden">
                   {weightLogs.length > 1 ? (
                     <svg className="w-full h-full" viewBox="0 0 300 120" preserveAspectRatio="none">
-                      {/* Grid lines */}
-                      <line x1="0" y1="20" x2="300" y2="20" stroke="#1f2937" strokeWidth="0.5" strokeDasharray="3" />
-                      <line x1="0" y1="60" x2="300" y2="60" stroke="#1f2937" strokeWidth="0.5" strokeDasharray="3" />
-                      <line x1="0" y1="100" x2="300" y2="100" stroke="#1f2937" strokeWidth="0.5" strokeDasharray="3" />
+                      <line x1="0" y1="20" x2="300" y2="20" stroke="currentColor" className="text-slate-200 dark:text-gray-800" strokeWidth="0.5" strokeDasharray="3" />
+                      <line x1="0" y1="60" x2="300" y2="60" stroke="currentColor" className="text-slate-200 dark:text-gray-800" strokeWidth="0.5" strokeDasharray="3" />
+                      <line x1="0" y1="100" x2="300" y2="100" stroke="currentColor" className="text-slate-200 dark:text-gray-800" strokeWidth="0.5" strokeDasharray="3" />
 
                       {(() => {
                         const weights = weightLogs.map((log) => log.weight);
@@ -1040,7 +1075,6 @@ export default function App() {
 
                         return (
                           <>
-                            {/* Smooth connecting line */}
                             <polyline
                               fill="none"
                               stroke="url(#chartGrad)"
@@ -1048,20 +1082,19 @@ export default function App() {
                               points={polylinePoints}
                               className="transition-all duration-500"
                             />
-                            {/* Points on the chart */}
                             {points.map((p, idx) => (
                               <g key={idx}>
                                 <circle
                                   cx={p.x}
                                   cy={p.y}
                                   r="4"
-                                  fill="#10b981"
+                                  fill="#dc2626"
                                   className="cursor-pointer hover:r-6 transition-all"
                                 />
                                 <text
                                   x={p.x}
                                   y={p.y - 8}
-                                  fill="#e5e7eb"
+                                  className="fill-slate-700 dark:fill-gray-200"
                                   fontSize="7"
                                   fontWeight="bold"
                                   textAnchor="middle"
@@ -1071,7 +1104,7 @@ export default function App() {
                                 <text
                                   x={p.x}
                                   y="115"
-                                  fill="#6b7280"
+                                  className="fill-slate-400 dark:fill-gray-600"
                                   fontSize="6"
                                   fontWeight="bold"
                                   textAnchor="middle"
@@ -1080,11 +1113,10 @@ export default function App() {
                                 </text>
                               </g>
                             ))}
-                            {/* Gradients */}
                             <defs>
                               <linearGradient id="chartGrad" x1="0" y1="0" x2="1" y2="0">
-                                <stop offset="0%" stopColor="#10b981" />
-                                <stop offset="100%" stopColor="#06b6d4" />
+                                <stop offset="0%" stopColor="#dc2626" />
+                                <stop offset="100%" stopColor="#2563eb" />
                               </linearGradient>
                             </defs>
                           </>
@@ -1092,7 +1124,7 @@ export default function App() {
                       })()}
                     </svg>
                   ) : (
-                    <span className="text-xs text-gray-500">Record at least 2 weights to plot progress</span>
+                    <span className="text-xs text-slate-400">Record at least 2 weights to plot progress</span>
                   )}
                 </div>
 
@@ -1104,11 +1136,11 @@ export default function App() {
                     value={newLogWeight}
                     onChange={(e) => setNewLogWeight(e.target.value)}
                     placeholder="Log Weight (kg)"
-                    className="flex-grow bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className="flex-grow bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                   />
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 text-black hover:brightness-105 active:scale-95 transition-all"
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white active:scale-95 transition-all"
                   >
                     Save Log
                   </button>
@@ -1121,31 +1153,31 @@ export default function App() {
         {/* TAB 3: HEALTH CALCULATOR */}
         {activeTab === "calculator" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fadeIn">
-            {/* INPUT CARD */}
-            <div className="lg:col-span-1 glass-panel rounded-3xl p-6 border border-gray-800 shadow-xl">
-              <h2 className="text-xl font-extrabold text-white mb-2">TDEE & Macro Calculator</h2>
-              <p className="text-xs text-gray-400 mb-6">
+            {/* INPUTS CARD */}
+            <div className="lg:col-span-1 glass-panel rounded-3xl p-6 shadow-xl">
+              <h2 className="text-xl font-extrabold text-slate-800 dark:text-white mb-2">TDEE & Macro Calculator</h2>
+              <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">
                 Calculate total daily energy expenditure and macronutrient requirements.
               </p>
 
               <form onSubmit={handleCalculateTDEE} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Age (Years)</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mb-1">Age (Years)</label>
                     <input
                       type="number"
                       required
                       value={calcAge}
                       onChange={(e) => setCalcAge(parseInt(e.target.value))}
-                      className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Gender</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mb-1">Gender</label>
                     <select
                       value={calcGender}
                       onChange={(e) => setCalcGender(e.target.value)}
-                      className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                     >
                       <option value="male">Male</option>
                       <option value="female">Female</option>
@@ -1155,33 +1187,33 @@ export default function App() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Weight (kg)</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mb-1">Weight (kg)</label>
                     <input
                       type="number"
                       required
                       value={calcWeight}
                       onChange={(e) => setCalcWeight(parseInt(e.target.value))}
-                      className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Height (cm)</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mb-1">Height (cm)</label>
                     <input
                       type="number"
                       required
                       value={calcHeight}
                       onChange={(e) => setCalcHeight(parseInt(e.target.value))}
-                      className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Activity Level</label>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mb-1">Activity Level</label>
                   <select
                     value={calcActivity}
                     onChange={(e) => setCalcActivity(e.target.value)}
-                    className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                   >
                     <option value="1.2">Sedentary (Little/No Exercise)</option>
                     <option value="1.375">Lightly Active (1-3 Days/Wk)</option>
@@ -1192,11 +1224,11 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Fitness Goal</label>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mb-1">Fitness Goal</label>
                   <select
                     value={calcGoal}
                     onChange={(e) => setCalcGoal(e.target.value)}
-                    className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                   >
                     <option value="lose">Fat Loss (Deficit -500kcal)</option>
                     <option value="maintain">Maintain Current Weight</option>
@@ -1206,89 +1238,89 @@ export default function App() {
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 text-black font-extrabold rounded-xl shadow-lg hover:brightness-110 active:scale-98 transition-all text-sm uppercase tracking-wider"
+                  className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold rounded-xl shadow-lg active:scale-98 transition-all text-sm uppercase tracking-wider"
                 >
                   Calculate Now
                 </button>
               </form>
             </div>
 
-            {/* RESULTS OUTCOME */}
+            {/* RESULTS VIEW */}
             <div className="lg:col-span-2 space-y-6">
               {calcResult ? (
-                <div className="glass-panel rounded-3xl p-6 border border-gray-800 shadow-xl space-y-6 animate-fadeIn">
-                  <h3 className="text-xl font-bold text-white">Your Caloric & Macro Targets</h3>
+                <div className="glass-panel rounded-3xl p-6 shadow-xl space-y-6 animate-fadeIn">
+                  <h3 className="text-xl font-bold text-slate-800 dark:text-white">Your Caloric & Macro Targets</h3>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="p-4 bg-gray-950/40 border border-gray-900 rounded-2xl text-center">
-                      <div className="text-xs font-semibold text-gray-500 uppercase">BMI Score</div>
-                      <div className="text-xl font-extrabold text-white mt-1">{calcResult.bmi}</div>
-                      <div className="text-[10px] text-emerald-400 font-semibold mt-1">{calcResult.bmiCategory}</div>
+                    <div className="p-4 bg-slate-100/50 dark:bg-gray-950/40 border border-slate-200 dark:border-gray-900 rounded-2xl text-center">
+                      <div className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase">BMI Score</div>
+                      <div className="text-xl font-extrabold text-slate-800 dark:text-white mt-1">{calcResult.bmi}</div>
+                      <div className="text-[10px] text-red-600 dark:text-red-400 font-semibold mt-1">{calcResult.bmiCategory}</div>
                     </div>
-                    <div className="p-4 bg-gray-950/40 border border-gray-900 rounded-2xl text-center">
-                      <div className="text-xs font-semibold text-gray-500 uppercase">Basal Metabolic Rate</div>
-                      <div className="text-xl font-extrabold text-white mt-1">{calcResult.bmr}</div>
-                      <div className="text-[10px] text-gray-400 mt-1">kcal (BMR)</div>
+                    <div className="p-4 bg-slate-100/50 dark:bg-gray-950/40 border border-slate-200 dark:border-gray-900 rounded-2xl text-center">
+                      <div className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase">Basal Metabolic Rate</div>
+                      <div className="text-xl font-extrabold text-slate-800 dark:text-white mt-1">{calcResult.bmr}</div>
+                      <div className="text-[10px] text-slate-500 dark:text-gray-400 mt-1">kcal (BMR)</div>
                     </div>
-                    <div className="p-4 bg-gray-950/40 border border-gray-900 rounded-2xl text-center">
-                      <div className="text-xs font-semibold text-gray-500 uppercase">Maintenance</div>
-                      <div className="text-xl font-extrabold text-white mt-1">{calcResult.tdee}</div>
-                      <div className="text-[10px] text-gray-400 mt-1">kcal (TDEE)</div>
+                    <div className="p-4 bg-slate-100/50 dark:bg-gray-950/40 border border-slate-200 dark:border-gray-900 rounded-2xl text-center">
+                      <div className="text-xs font-semibold text-slate-400 dark:text-gray-500 uppercase">Maintenance</div>
+                      <div className="text-xl font-extrabold text-slate-800 dark:text-white mt-1">{calcResult.tdee}</div>
+                      <div className="text-[10px] text-slate-500 dark:text-gray-400 mt-1">kcal (TDEE)</div>
                     </div>
-                    <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-center">
-                      <div className="text-xs font-semibold text-emerald-400 uppercase">Daily Calorie Goal</div>
-                      <div className="text-2xl font-black text-emerald-400 mt-1">{calcResult.targetCal}</div>
-                      <div className="text-[10px] text-emerald-400/80 mt-1">kcal / Day</div>
+                    <div className="p-4 bg-red-500/10 dark:bg-red-500/20 border border-red-500/20 rounded-2xl text-center">
+                      <div className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase">Daily Calorie Goal</div>
+                      <div className="text-2xl font-black text-red-600 dark:text-red-400 mt-1">{calcResult.targetCal}</div>
+                      <div className="text-[10px] text-red-500 dark:text-red-400/80 mt-1">kcal / Day</div>
                     </div>
                   </div>
 
-                  {/* MACRO BREAKDOWN CARDS */}
+                  {/* MACROS CARD */}
                   <div className="space-y-4">
-                    <h4 className="text-sm font-extrabold text-gray-300 uppercase tracking-wider">Macronutrient Targets</h4>
+                    <h4 className="text-sm font-extrabold text-slate-600 dark:text-gray-300 uppercase tracking-wider">Macronutrient Targets</h4>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {/* PROTEIN */}
-                      <div className="p-4 bg-gray-900/40 border border-gray-800 rounded-2xl">
+                      <div className="p-4 bg-slate-100/50 dark:bg-gray-900/40 border border-slate-200 dark:border-gray-800 rounded-2xl">
                         <div className="flex justify-between items-center mb-2">
-                          <span className="text-xs font-bold text-emerald-400 uppercase">Protein</span>
-                          <span className="text-xs text-gray-400">{calcResult.pPct}% ({calcResult.proteinGrams * 4} kcal)</span>
+                          <span className="text-xs font-bold text-red-600 dark:text-red-400 uppercase">Protein</span>
+                          <span className="text-xs text-slate-500 dark:text-gray-400">{calcResult.pPct}% ({calcResult.proteinGrams * 4} kcal)</span>
                         </div>
-                        <div className="text-2xl font-black text-white">{calcResult.proteinGrams}g</div>
-                        <div className="w-full bg-gray-800 h-1.5 rounded-full mt-2 overflow-hidden">
-                          <div className="bg-emerald-400 h-full rounded-full" style={{ width: `${calcResult.pPct}%` }}></div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white">{calcResult.proteinGrams}g</div>
+                        <div className="w-full bg-slate-200 dark:bg-gray-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                          <div className="bg-red-600 h-full rounded-full" style={{ width: `${calcResult.pPct}%` }}></div>
                         </div>
-                        <span className="text-[10px] text-gray-500 mt-1 block">Crucial for muscle recovery & repair</span>
+                        <span className="text-[10px] text-slate-400 dark:text-gray-500 mt-1 block">Crucial for muscle recovery & repair</span>
                       </div>
 
                       {/* CARBS */}
-                      <div className="p-4 bg-gray-900/40 border border-gray-800 rounded-2xl">
+                      <div className="p-4 bg-slate-100/50 dark:bg-gray-900/40 border border-slate-200 dark:border-gray-800 rounded-2xl">
                         <div className="flex justify-between items-center mb-2">
-                          <span className="text-xs font-bold text-cyan-400 uppercase">Carbohydrates</span>
-                          <span className="text-xs text-gray-400">{calcResult.cPct}% ({calcResult.carbsGrams * 4} kcal)</span>
+                          <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase">Carbohydrates</span>
+                          <span className="text-xs text-slate-500 dark:text-gray-400">{calcResult.cPct}% ({calcResult.carbsGrams * 4} kcal)</span>
                         </div>
-                        <div className="text-2xl font-black text-white">{calcResult.carbsGrams}g</div>
-                        <div className="w-full bg-gray-800 h-1.5 rounded-full mt-2 overflow-hidden">
-                          <div className="bg-cyan-400 h-full rounded-full" style={{ width: `${calcResult.cPct}%` }}></div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white">{calcResult.carbsGrams}g</div>
+                        <div className="w-full bg-slate-200 dark:bg-gray-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                          <div className="bg-blue-600 h-full rounded-full" style={{ width: `${calcResult.cPct}%` }}></div>
                         </div>
-                        <span className="text-[10px] text-gray-500 mt-1 block">Primary energy source for workouts</span>
+                        <span className="text-[10px] text-slate-400 dark:text-gray-500 mt-1 block">Primary energy source for workouts</span>
                       </div>
 
-                      {/* FAT */}
-                      <div className="p-4 bg-gray-900/40 border border-gray-800 rounded-2xl">
+                      {/* FATS */}
+                      <div className="p-4 bg-slate-100/50 dark:bg-gray-900/40 border border-slate-200 dark:border-gray-800 rounded-2xl">
                         <div className="flex justify-between items-center mb-2">
-                          <span className="text-xs font-bold text-purple-400 uppercase">Fats</span>
-                          <span className="text-xs text-gray-400">{calcResult.fPct}% ({calcResult.fatGrams * 9} kcal)</span>
+                          <span className="text-xs font-bold text-purple-600 dark:text-purple-400 uppercase">Fats</span>
+                          <span className="text-xs text-slate-500 dark:text-gray-400">{calcResult.fPct}% ({calcResult.fatGrams * 9} kcal)</span>
                         </div>
-                        <div className="text-2xl font-black text-white">{calcResult.fatGrams}g</div>
-                        <div className="w-full bg-gray-800 h-1.5 rounded-full mt-2 overflow-hidden">
-                          <div className="bg-purple-400 h-full rounded-full" style={{ width: `${calcResult.fPct}%` }}></div>
+                        <div className="text-2xl font-black text-slate-800 dark:text-white">{calcResult.fatGrams}g</div>
+                        <div className="w-full bg-slate-200 dark:bg-gray-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                          <div className="bg-purple-600 h-full rounded-full" style={{ width: `${calcResult.fPct}%` }}></div>
                         </div>
-                        <span className="text-[10px] text-gray-500 mt-1 block">Supports healthy hormone production</span>
+                        <span className="text-[10px] text-slate-400 dark:text-gray-500 mt-1 block">Supports healthy hormone production</span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-4 rounded-2xl bg-cyan-950/20 border border-cyan-800/30 text-xs text-cyan-400 flex items-start space-x-3">
+                  <div className="p-4 rounded-2xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900/30 text-xs text-blue-700 dark:text-blue-400 flex items-start space-x-3">
                     <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
@@ -1298,11 +1330,11 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                <div className="glass-panel rounded-3xl p-10 border border-gray-800 text-center text-gray-400 h-full flex flex-col justify-center items-center">
-                  <svg className="w-16 h-16 text-gray-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="glass-panel rounded-3xl p-10 text-center text-slate-400 dark:text-gray-500 h-full flex flex-col justify-center items-center">
+                  <svg className="w-16 h-16 text-slate-300 dark:text-gray-800 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                   </svg>
-                  <h3 className="text-lg font-bold text-white mb-2">No Calculation Yet</h3>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">No Calculation Yet</h3>
                   <p className="text-xs max-w-sm">
                     Fill in your demographic details and activity levels on the left panel to output tailored daily calorie and protein breakdowns.
                   </p>
@@ -1315,20 +1347,20 @@ export default function App() {
         {/* TAB 4: WORKOUT GENERATOR */}
         {activeTab === "workout-generator" && (
           <div className="space-y-8 animate-fadeIn">
-            {/* INPUT FILTER */}
-            <div className="glass-panel rounded-3xl p-6 border border-gray-800 shadow-xl">
-              <h2 className="text-xl font-extrabold text-white mb-2">Smart Routine Builder</h2>
-              <p className="text-xs text-gray-400 mb-6">
+            {/* INPUT PANEL */}
+            <div className="glass-panel rounded-3xl p-6 shadow-xl">
+              <h2 className="text-xl font-extrabold text-slate-800 dark:text-white mb-2">Smart Routine Builder</h2>
+              <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">
                 Auto-generate structured training routines matching your resources and goals.
               </p>
 
               <form onSubmit={handleGenerateRoutine} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Target Goal</label>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mb-1">Target Goal</label>
                   <select
                     value={genGoal}
                     onChange={(e) => setGenGoal(e.target.value)}
-                    className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                   >
                     <option value="hypertrophy">Muscle Gain (Hypertrophy)</option>
                     <option value="strength">Raw Power (Strength)</option>
@@ -1337,11 +1369,11 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Available Equipment</label>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mb-1">Available Equipment</label>
                   <select
                     value={genEquipment}
                     onChange={(e) => setGenEquipment(e.target.value)}
-                    className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                   >
                     <option value="gym">Full Gym Equipment</option>
                     <option value="dumbbells">Dumbbells Only</option>
@@ -1350,11 +1382,11 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Frequency (Days / Wk)</label>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mb-1">Frequency (Days / Wk)</label>
                   <select
                     value={genDays}
                     onChange={(e) => setGenDays(parseInt(e.target.value))}
-                    className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                   >
                     <option value={3}>3 Days Split</option>
                     <option value={4}>4 Days Split</option>
@@ -1364,41 +1396,41 @@ export default function App() {
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 text-black font-extrabold rounded-xl shadow-lg hover:brightness-110 active:scale-98 transition-all text-sm uppercase tracking-wider"
+                  className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold rounded-xl shadow-lg active:scale-98 transition-all text-sm uppercase tracking-wider"
                 >
                   Build Routine
                 </button>
               </form>
             </div>
 
-            {/* GENERATED OUTCOME DISPLAY */}
+            {/* GENERATED SPLITS */}
             {generatedRoutine ? (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-bold text-white">Your Generated Split</h3>
-                  <span className="text-xs text-gray-400 font-semibold px-3 py-1 rounded bg-gray-900 border border-gray-800">
+              <div className="space-y-6 animate-fadeIn">
+                <div className="flex flex-col sm:flex-row justify-between items-center gap-2">
+                  <h3 className="text-xl font-bold text-slate-800 dark:text-white">Your Generated Split</h3>
+                  <span className="text-xs text-slate-500 dark:text-gray-400 font-semibold px-3 py-1 rounded bg-slate-100 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 shadow-sm">
                     {genDays} Days split / {genEquipment} Equipment / {genGoal} Goal
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {generatedRoutine.map((routineDay, idx) => (
-                    <div key={idx} className="glass-panel rounded-2xl border border-gray-800 p-5 shadow-lg flex flex-col justify-between">
+                    <div key={idx} className="glass-panel rounded-2xl border border-slate-200 dark:border-gray-800 p-5 shadow-md flex flex-col justify-between">
                       <div>
-                        <h4 className="text-sm font-black text-emerald-400 uppercase tracking-wider mb-4 border-b border-gray-800 pb-2">
+                        <h4 className="text-sm font-black text-red-600 dark:text-red-400 uppercase tracking-wider mb-4 border-b border-slate-200 dark:border-gray-800 pb-2">
                           {routineDay.day}
                         </h4>
 
                         <div className="space-y-3">
                           {routineDay.exercises.map((ex, exIdx) => (
-                            <div key={exIdx} className="flex justify-between items-center text-xs p-2.5 bg-gray-950/30 rounded-xl border border-gray-900">
+                            <div key={exIdx} className="flex justify-between items-center text-xs p-2.5 bg-slate-50 dark:bg-gray-950/30 rounded-xl border border-slate-200/50 dark:border-gray-900">
                               <div>
-                                <span className="font-bold text-gray-200 block">{ex.name}</span>
-                                <span className="text-[10px] text-gray-500">{ex.target}</span>
+                                <span className="font-bold text-slate-800 dark:text-gray-200 block">{ex.name}</span>
+                                <span className="text-[10px] text-slate-400 dark:text-gray-500">{ex.target}</span>
                               </div>
-                              <div className="text-right text-gray-400 font-semibold">
+                              <div className="text-right text-slate-500 dark:text-gray-400 font-semibold">
                                 {ex.defaultSets} × {ex.defaultReps}
-                                {ex.weight > 0 && <span className="text-[10px] text-emerald-400 block">{ex.weight}kg</span>}
+                                {ex.weight > 0 && <span className="text-[10px] text-red-600 dark:text-red-400 block">{ex.weight}kg</span>}
                               </div>
                             </div>
                           ))}
@@ -1407,7 +1439,7 @@ export default function App() {
 
                       <button
                         onClick={() => startRoutineSession(routineDay.day, routineDay.exercises)}
-                        className="w-full mt-6 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-500 to-cyan-500 text-black hover:scale-101 active:scale-98 transition-all"
+                        className="w-full mt-6 py-2 rounded-xl text-xs font-bold bg-red-600 hover:bg-red-700 text-white hover:scale-101 active:scale-98 transition-all"
                       >
                         Start Workout Session
                       </button>
@@ -1416,11 +1448,11 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <div className="glass-panel rounded-3xl p-16 border border-gray-800 text-center text-gray-400 flex flex-col items-center">
-                <svg className="w-16 h-16 text-gray-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="glass-panel rounded-3xl p-16 text-center text-slate-400 dark:text-gray-500 flex flex-col items-center">
+                <svg className="w-16 h-16 text-slate-300 dark:text-gray-800 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                 </svg>
-                <h3 className="text-lg font-bold text-white mb-2">No Routine Generated</h3>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">No Routine Generated</h3>
                 <p className="text-xs max-w-sm">
                   Select your target objectives, equipment limitations, and workout days to customize and generate a personal training regimen.
                 </p>
@@ -1429,34 +1461,34 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 5: ACTIVE WORKOUT TRACKER */}
+        {/* TAB 5: ACTIVE WORKOUT */}
         {activeTab === "active-workout" && (
           <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn">
             {activeWorkoutList.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* ACTIVE EXERCISE CARD */}
-                <div className="md:col-span-2 glass-panel rounded-3xl p-6 border border-gray-800 shadow-xl flex flex-col justify-between">
+                {/* ACTIVE CARD */}
+                <div className="md:col-span-2 glass-panel rounded-3xl p-6 shadow-xl flex flex-col justify-between">
                   <div>
-                    <span className="text-xs font-bold text-emerald-400 uppercase tracking-widest block mb-2">
+                    <span className="text-xs font-bold text-red-600 dark:text-red-400 uppercase tracking-widest block mb-2">
                       Exercise {activeExerciseIndex + 1} of {activeWorkoutList.length}
                     </span>
 
-                    <h2 className="text-2xl font-black text-white mb-2">
+                    <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">
                       {activeWorkoutList[activeExerciseIndex].name}
                     </h2>
-                    <span className="text-xs bg-gray-900 border border-gray-800 text-gray-400 px-3 py-1 rounded-full inline-block mb-6">
+                    <span className="text-xs bg-slate-100 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 text-slate-500 dark:text-gray-400 px-3 py-1 rounded-full inline-block mb-6">
                       Target: {activeWorkoutList[activeExerciseIndex].target}
                     </span>
 
-                    {/* SET TRACKER PROGRESS LIST */}
+                    {/* SET LIST */}
                     <div className="space-y-3">
                       {Array.from({ length: activeWorkoutList[activeExerciseIndex].defaultSets }).map((_, idx) => (
                         <div
                           key={idx}
                           className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
                             idx < (activeSetsCompleted[activeExerciseIndex] || 0)
-                              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                              : "bg-gray-950/40 border-gray-900 text-gray-500"
+                              ? "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400"
+                              : "bg-slate-50 dark:bg-gray-950/40 border-slate-200 dark:border-gray-900 text-slate-400 dark:text-gray-500"
                           }`}
                         >
                           <span className="text-xs font-bold">Set {idx + 1}</span>
@@ -1465,11 +1497,11 @@ export default function App() {
                             {activeWorkoutList[activeExerciseIndex].weight > 0 && ` @ ${activeWorkoutList[activeExerciseIndex].weight} kg`}
                           </span>
                           {idx < (activeSetsCompleted[activeExerciseIndex] || 0) ? (
-                            <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
                             </svg>
                           ) : (
-                            <div className="w-5 h-5 rounded-full border-2 border-gray-800"></div>
+                            <div className="w-5 h-5 rounded-full border-2 border-slate-200 dark:border-gray-850"></div>
                           )}
                         </div>
                       ))}
@@ -1481,30 +1513,30 @@ export default function App() {
                       <button
                         onClick={() => incrementSetCompleted(activeExerciseIndex)}
                         disabled={(activeSetsCompleted[activeExerciseIndex] || 0) >= activeWorkoutList[activeExerciseIndex].defaultSets}
-                        className="py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 disabled:from-gray-800 disabled:to-gray-800 text-black disabled:text-gray-500 font-bold rounded-xl active:scale-95 transition-all text-xs uppercase"
+                        className="py-3 bg-red-600 hover:bg-red-700 disabled:bg-slate-200 dark:disabled:bg-gray-800 text-white disabled:text-slate-400 dark:disabled:text-gray-500 font-bold rounded-xl active:scale-95 transition-all text-xs uppercase"
                       >
                         Complete Set
                       </button>
                       <button
                         onClick={() => logActiveExerciseToDatabase(activeExerciseIndex)}
-                        className="py-3 bg-gray-900 border border-gray-800 hover:border-emerald-500/30 text-emerald-400 font-bold rounded-xl active:scale-95 transition-all text-xs uppercase"
+                        className="py-3 bg-slate-100 hover:bg-slate-200 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 hover:border-red-500/20 dark:hover:border-red-500/20 text-red-600 dark:text-red-400 font-bold rounded-xl active:scale-95 transition-all text-xs uppercase"
                       >
                         Log to Database
                       </button>
                     </div>
 
-                    <div className="flex justify-between items-center pt-4 border-t border-gray-800">
+                    <div className="flex justify-between items-center pt-4 border-t border-slate-200 dark:border-gray-800">
                       <button
                         onClick={() => setActiveExerciseIndex(Math.max(0, activeExerciseIndex - 1))}
                         disabled={activeExerciseIndex === 0}
-                        className="px-4 py-2 rounded-xl text-xs font-bold bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 disabled:opacity-40"
+                        className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 hover:bg-slate-200 dark:hover:bg-gray-800 text-slate-700 dark:text-gray-300 disabled:opacity-40"
                       >
                         Prev Exercise
                       </button>
                       <button
                         onClick={() => setActiveExerciseIndex(Math.min(activeWorkoutList.length - 1, activeExerciseIndex + 1))}
                         disabled={activeExerciseIndex === activeWorkoutList.length - 1}
-                        className="px-4 py-2 rounded-xl text-xs font-bold bg-gray-900 border border-gray-800 hover:bg-gray-800 text-gray-300 disabled:opacity-40"
+                        className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 hover:bg-slate-200 dark:hover:bg-gray-800 text-slate-700 dark:text-gray-300 disabled:opacity-40"
                       >
                         Next Exercise
                       </button>
@@ -1512,24 +1544,23 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* COUNTDOWN REST TIMER COLUMN */}
-                <div className="glass-panel rounded-3xl p-6 border border-gray-800 shadow-xl flex flex-col justify-between items-center text-center">
+                {/* REST TIMER CARD */}
+                <div className="glass-panel rounded-3xl p-6 shadow-xl flex flex-col justify-between items-center text-center">
                   <div>
-                    <h3 className="text-sm font-black text-gray-300 uppercase tracking-widest mb-4">REST TIMER</h3>
-                    <p className="text-[10px] text-gray-500 max-w-[180px] mx-auto">
+                    <h3 className="text-sm font-black text-slate-600 dark:text-gray-300 uppercase tracking-widest mb-4">REST TIMER</h3>
+                    <p className="text-[10px] text-slate-400 dark:text-gray-500 max-w-[180px] mx-auto">
                       Rest interval counts down after completed sets. Live sound feedback synthesized locally.
                     </p>
                   </div>
 
-                  {/* CIRCULAR TIMER GRAPHIC */}
                   <div className="relative my-6 w-36 h-36 flex items-center justify-center">
                     <svg className="w-full h-full transform -rotate-95" viewBox="0 0 100 100">
-                      <circle cx="50" cy="50" r="42" stroke="#1f2937" strokeWidth="6" fill="transparent" />
+                      <circle cx="50" cy="50" r="42" stroke="currentColor" className="text-slate-200 dark:text-gray-850" strokeWidth="6" fill="transparent" />
                       <circle
                         cx="50"
                         cy="50"
                         r="42"
-                        stroke="#10b981"
+                        stroke="#dc2626"
                         strokeWidth="6"
                         fill="transparent"
                         strokeDasharray={2 * Math.PI * 42}
@@ -1542,20 +1573,20 @@ export default function App() {
                       />
                     </svg>
                     <div className="absolute text-center">
-                      <span className="text-3xl font-black text-white">
+                      <span className="text-3xl font-black text-slate-800 dark:text-white">
                         {timerSecondsLeft > 0 ? timerSecondsLeft : timerDuration}
                       </span>
-                      <span className="text-[10px] text-gray-500 font-bold block">SECONDS</span>
+                      <span className="text-[10px] text-slate-500 dark:text-gray-500 font-bold block">SECONDS</span>
                     </div>
                   </div>
 
                   <div className="w-full space-y-4">
                     <div className="flex justify-center items-center space-x-2">
-                      <span className="text-xs text-gray-400 font-semibold">Timer Interval:</span>
+                      <span className="text-xs text-slate-500 dark:text-gray-400 font-semibold">Timer Interval:</span>
                       <select
                         value={timerDuration}
                         onChange={(e) => setTimerDuration(parseInt(e.target.value))}
-                        className="bg-gray-900 border border-gray-800 text-xs text-emerald-400 font-bold rounded-lg px-2 py-1 focus:outline-none focus:border-emerald-500"
+                        className="bg-slate-100 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 text-xs text-red-600 dark:text-red-400 font-bold rounded-lg px-2 py-1 focus:outline-none focus:border-red-500"
                       >
                         <option value={30}>30s</option>
                         <option value={45}>45s</option>
@@ -1576,8 +1607,8 @@ export default function App() {
                         }}
                         className={`flex-grow py-2 rounded-xl text-xs font-bold border transition-all ${
                           timerIsActive
-                            ? "bg-red-500/10 border-red-500/20 text-red-400"
-                            : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                            ? "bg-red-500/10 border-red-500/20 text-red-600 dark:text-red-400"
+                            : "bg-blue-500/10 border-blue-500/20 text-blue-600 dark:text-blue-400"
                         }`}
                       >
                         {timerIsActive ? "Pause" : "Start"}
@@ -1587,7 +1618,7 @@ export default function App() {
                           setTimerIsActive(false);
                           setTimerSecondsLeft(0);
                         }}
-                        className="px-3 py-2 bg-gray-900 hover:bg-gray-800 text-gray-400 border border-gray-800 rounded-xl text-xs"
+                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-gray-900 dark:hover:bg-gray-800 text-slate-500 dark:text-gray-400 border border-slate-200 dark:border-gray-850 rounded-xl text-xs"
                       >
                         Reset
                       </button>
@@ -1596,17 +1627,17 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <div className="glass-panel rounded-3xl p-16 border border-gray-800 text-center text-gray-400 flex flex-col items-center">
-                <svg className="w-16 h-16 text-gray-700 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="glass-panel rounded-3xl p-16 text-center text-slate-400 dark:text-gray-500 flex flex-col items-center">
+                <svg className="w-16 h-16 text-slate-300 dark:text-gray-800 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <h3 className="text-lg font-bold text-white mb-2">No Active Session</h3>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-2">No Active Session</h3>
                 <p className="text-xs max-w-sm mb-6">
                   Before tracking active sets and rest timers, go to the Workout Generator tab to build a customized training routine, then select "Start Session".
                 </p>
                 <button
                   onClick={() => setActiveTab("workout-generator")}
-                  className="px-6 py-2 bg-gradient-to-r from-emerald-500 to-cyan-500 text-black text-xs font-bold rounded-xl shadow-lg hover:brightness-110 active:scale-95 transition-all"
+                  className="px-6 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-md transition-all"
                 >
                   Generate Workouts Split
                 </button>
@@ -1618,87 +1649,87 @@ export default function App() {
         {/* TAB 6: WORKOUT LOGS */}
         {activeTab === "history" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fadeIn">
-            {/* MANUAL LOGGER INPUT */}
-            <div className="lg:col-span-1 glass-panel rounded-3xl p-6 border border-gray-800 shadow-xl">
-              <h2 className="text-xl font-extrabold text-white mb-2">Manual Workout Logger</h2>
-              <p className="text-xs text-gray-400 mb-6">
+            {/* MANUAL LOG */}
+            <div className="lg:col-span-1 glass-panel rounded-3xl p-6 shadow-xl">
+              <h2 className="text-xl font-extrabold text-slate-800 dark:text-white mb-2">Manual Workout Logger</h2>
+              <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">
                 Directly add an exercise log to your personal history.
               </p>
 
               <form onSubmit={handleManualWorkoutSubmit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Exercise Name</label>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mb-1">Exercise Name</label>
                   <input
                     type="text"
                     required
                     value={workoutLogForm.exercise_name}
                     onChange={(e) => setWorkoutLogForm({ ...workoutLogForm, exercise_name: e.target.value })}
                     placeholder="Barbell Bench Press"
-                    className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                   />
                 </div>
 
                 <div className="grid grid-cols-3 gap-2">
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Sets</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mb-1">Sets</label>
                     <input
                       type="number"
                       required
                       min="1"
                       value={workoutLogForm.sets}
                       onChange={(e) => setWorkoutLogForm({ ...workoutLogForm, sets: e.target.value })}
-                      className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Reps</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mb-1">Reps</label>
                     <input
                       type="number"
                       required
                       min="1"
                       value={workoutLogForm.reps}
                       onChange={(e) => setWorkoutLogForm({ ...workoutLogForm, reps: e.target.value })}
-                      className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Wt (kg)</label>
+                    <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mb-1">Wt (kg)</label>
                     <input
                       type="number"
                       required
                       step="0.5"
                       value={workoutLogForm.weight}
                       onChange={(e) => setWorkoutLogForm({ ...workoutLogForm, weight: e.target.value })}
-                      className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-400 uppercase mb-1">Date</label>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-gray-400 uppercase mb-1">Date</label>
                   <input
                     type="date"
                     required
                     value={workoutLogForm.date}
                     onChange={(e) => setWorkoutLogForm({ ...workoutLogForm, date: e.target.value })}
-                    className="w-full bg-gray-950/60 border border-gray-800 rounded-xl px-4 py-2 text-sm text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 text-black font-extrabold rounded-xl shadow-lg hover:brightness-110 active:scale-98 transition-all text-sm uppercase tracking-wider"
+                  className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-extrabold rounded-xl shadow-lg active:scale-98 transition-all text-sm uppercase tracking-wider"
                 >
                   Log Workout
                 </button>
               </form>
             </div>
 
-            {/* PREVIOUS LOG LIST HISTORY */}
-            <div className="lg:col-span-2 glass-panel rounded-3xl p-6 border border-gray-800 shadow-xl flex flex-col justify-between">
+            {/* PREVIOUS LOGS */}
+            <div className="lg:col-span-2 glass-panel rounded-3xl p-6 shadow-xl flex flex-col justify-between">
               <div>
-                <h3 className="text-xl font-bold text-white mb-2">Logged Exercises History</h3>
-                <p className="text-xs text-gray-400 mb-6">
+                <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Logged Exercises History</h3>
+                <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">
                   Timeline record of all physical workouts completed on this profile.
                 </p>
 
@@ -1707,18 +1738,18 @@ export default function App() {
                     workoutLogs.map((log) => (
                       <div
                         key={log.id}
-                        className="flex justify-between items-center p-4 rounded-2xl bg-gray-950/40 border border-gray-900 hover:border-emerald-500/10 transition-colors"
+                        className="flex justify-between items-center p-4 rounded-2xl bg-slate-100/50 dark:bg-gray-950/40 border border-slate-200/50 dark:border-gray-900 hover:border-red-500/10 transition-colors"
                       >
                         <div>
-                          <span className="font-extrabold text-sm text-white block">{log.exercise_name}</span>
-                          <div className="flex space-x-2 text-[10px] text-gray-500 font-semibold mt-1">
+                          <span className="font-extrabold text-sm text-slate-800 dark:text-white block">{log.exercise_name}</span>
+                          <div className="flex space-x-2 text-[10px] text-slate-400 dark:text-gray-550 font-semibold mt-1">
                             <span>{log.date}</span>
                             <span>•</span>
                             <span>{log.sets} sets × {log.reps} reps</span>
                             {log.weight > 0 && (
                               <>
                                 <span>•</span>
-                                <span className="text-emerald-400">{log.weight} kg</span>
+                                <span className="text-red-600 dark:text-red-450">{log.weight} kg</span>
                               </>
                             )}
                           </div>
@@ -1726,7 +1757,7 @@ export default function App() {
 
                         <button
                           onClick={() => handleDeleteWorkout(log.id)}
-                          className="p-2 bg-gray-900 border border-gray-800 rounded-xl hover:border-red-500/30 text-gray-500 hover:text-red-400 transition-colors"
+                          className="p-2 bg-slate-200/50 hover:bg-red-500/10 dark:bg-gray-900 dark:hover:bg-red-500/10 border border-slate-300/50 dark:border-gray-800 rounded-xl text-slate-500 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
                           title="Delete Log"
                         >
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1736,14 +1767,14 @@ export default function App() {
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-12 text-gray-500 text-xs">
+                    <div className="text-center py-12 text-slate-400 dark:text-gray-500 text-xs">
                       No logs logged yet. Generate a workout or log manually!
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="mt-8 pt-4 border-t border-gray-800/80 text-[10px] text-gray-500 flex justify-between">
+              <div className="mt-8 pt-4 border-t border-slate-200 dark:border-gray-800/80 text-[10px] text-slate-400 dark:text-gray-500 flex justify-between">
                 <span>Stored under user session</span>
                 <span>FitFlow Engine v1.0</span>
               </div>
@@ -1752,23 +1783,23 @@ export default function App() {
         )}
       </main>
 
-      {/* FOOTER AREA */}
-      <footer className="w-full py-8 border-t border-gray-900 bg-[#05080e] text-center text-xs text-gray-500 mt-12">
+      {/* FOOTER */}
+      <footer className="w-full py-8 border-t border-slate-200 dark:border-gray-900 bg-slate-100 dark:bg-[#05080e] text-center text-xs text-slate-500 dark:text-gray-500 mt-12">
         <div className="max-w-7xl mx-auto px-4 space-y-4">
           <div className="flex justify-center items-center space-x-6">
-            <a href="https://digitalheroesco.com" target="_blank" rel="noopener noreferrer" className="hover:text-emerald-400 font-semibold transition-colors">
+            <a href="https://digitalheroesco.com" target="_blank" rel="noopener noreferrer" className="hover:text-red-600 dark:hover:text-red-400 font-semibold transition-colors">
               Digital Heroes
             </a>
             <span>•</span>
-            <a href="mailto:guruprakash6999@gmail.com" className="hover:text-cyan-400 font-semibold transition-colors">
+            <a href="mailto:guruprakash6999@gmail.com" className="hover:text-blue-600 dark:hover:text-blue-400 font-semibold transition-colors">
               guruprakash6999@gmail.com
             </a>
           </div>
           <div>
-            &copy; {new Date().getFullYear()} FitFlow. Designed & Engineered by <span className="text-emerald-500 font-bold">Guruprakash S</span>.
+            &copy; {new Date().getFullYear()} FitFlow. Designed & Engineered by <span className="text-red-600 dark:text-red-400 font-bold">Guruprakash S</span>.
           </div>
-          <div className="text-[10px] text-gray-600 font-medium">
-            This trial application is build and distributed 100% free under license instructions.
+          <div className="text-[10px] text-slate-400 dark:text-gray-600 font-medium">
+            This trial application is built and distributed 100% free under license instructions.
           </div>
         </div>
       </footer>
