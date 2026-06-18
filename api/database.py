@@ -1,8 +1,12 @@
 import os
+from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Hybrid DB Configuration: Use Postgres (e.g. Supabase) in production, fallback to SQLite locally.
+# Load environment variables from .env file for local development
+load_dotenv()
+
+# Hybrid DB Configuration: Use Postgres (e.g. Supabase/Neon) in production, fallback to SQLite locally.
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Resolve SQLAlchemy compatibility and specify the pg8000 driver for PostgreSQL
