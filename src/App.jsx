@@ -778,6 +778,8 @@ export default function App() {
             <span className="inline-block w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse"></span>
             <span><strong>Engineer:</strong> Guruprakash S</span>
             <span className="text-slate-300 dark:text-gray-700">|</span>
+            <span><strong>Phone:</strong> <a href="tel:9345533527" className="text-blue-600 dark:text-blue-400 hover:underline">+91 9345533527</a></span>
+            <span className="text-slate-300 dark:text-gray-700">|</span>
             <span><strong>Email:</strong> <a href="mailto:guruprakash6999@gmail.com" className="text-blue-600 dark:text-blue-400 hover:underline">guruprakash6999@gmail.com</a></span>
           </div>
           <div className="mt-2 sm:mt-0 text-center sm:text-right font-medium">
@@ -786,7 +788,7 @@ export default function App() {
         </div>
 
         {/* NAVIGATION TABS */}
-        <div className="flex space-x-1 p-1 bg-slate-100 dark:bg-gray-900/80 backdrop-blur border border-slate-200 dark:border-gray-800 rounded-2xl mb-8 overflow-x-auto">
+        <div className="flex space-x-1 p-1 bg-slate-100 dark:bg-gray-900/80 backdrop-blur border border-slate-200 dark:border-gray-800 rounded-2xl mb-8 overflow-x-auto no-scrollbar">
           {[
             { id: "dashboard", label: "Dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
             { id: "calculator", label: "Macro Calc", icon: "M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" },
@@ -1786,13 +1788,25 @@ export default function App() {
       {/* FOOTER */}
       <footer className="w-full py-8 border-t border-slate-200 dark:border-gray-900 bg-slate-100 dark:bg-[#05080e] text-center text-xs text-slate-500 dark:text-gray-500 mt-12">
         <div className="max-w-7xl mx-auto px-4 space-y-4">
-          <div className="flex justify-center items-center space-x-6">
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-2 sm:gap-4 flex-wrap">
             <a href="https://digitalheroesco.com" target="_blank" rel="noopener noreferrer" className="hover:text-red-600 dark:hover:text-red-400 font-semibold transition-colors">
-              Digital Heroes
+              Built for Digital Heroes
             </a>
-            <span>•</span>
+            <span className="hidden sm:inline text-slate-300 dark:text-gray-800">|</span>
+            <a href="tel:9345533527" className="hover:text-blue-600 dark:hover:text-blue-400 font-semibold transition-colors">
+              📞 +91 9345533527
+            </a>
+            <span className="hidden sm:inline text-slate-300 dark:text-gray-800">|</span>
             <a href="mailto:guruprakash6999@gmail.com" className="hover:text-blue-600 dark:hover:text-blue-400 font-semibold transition-colors">
-              guruprakash6999@gmail.com
+              ✉️ guruprakash6999@gmail.com
+            </a>
+            <span className="hidden sm:inline text-slate-300 dark:text-gray-800">|</span>
+            <a href="https://www.linkedin.com/in/guruprakash-s-465078333" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 dark:hover:text-blue-400 font-semibold transition-colors">
+              🔗 LinkedIn
+            </a>
+            <span className="hidden sm:inline text-slate-300 dark:text-gray-800">|</span>
+            <a href="https://github.com/Guruprakash-coder" target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 dark:hover:text-blue-400 font-semibold transition-colors">
+              💻 GitHub
             </a>
           </div>
           <div>
