@@ -750,7 +750,10 @@ export default function App() {
         height: calcHeight,
         activity: calcActivity,
         goal: calcGoal,
-        targetCal
+        targetCal,
+        proteinGrams,
+        carbsGrams,
+        fatGrams
       })
     );
   };
@@ -947,6 +950,31 @@ export default function App() {
       return JSON.parse(saved).targetCal || 2000;
     }
     return 2000;
+  };
+
+  // Get current macro targets from profile (defaulting to standard values)
+  const getDailyProteinTarget = () => {
+    const saved = localStorage.getItem("fitflow_profile");
+    if (saved) {
+      return JSON.parse(saved).proteinGrams || 150;
+    }
+    return 150;
+  };
+
+  const getDailyCarbsTarget = () => {
+    const saved = localStorage.getItem("fitflow_profile");
+    if (saved) {
+      return JSON.parse(saved).carbsGrams || 250;
+    }
+    return 250;
+  };
+
+  const getDailyFatTarget = () => {
+    const saved = localStorage.getItem("fitflow_profile");
+    if (saved) {
+      return JSON.parse(saved).fatGrams || 70;
+    }
+    return 70;
   };
 
   return (
@@ -1819,30 +1847,30 @@ export default function App() {
                 
                 <div className="grid grid-cols-3 gap-4">
                   <div>
-                    <div className="flex justify-between items-center text-xs font-bold mb-1">
+                    <div className="flex justify-between items-center text-[10px] sm:text-xs font-bold mb-1">
                       <span className="text-red-600 dark:text-red-400 uppercase">Protein</span>
-                      <span className="text-slate-400">{apiStats.protein_today}g</span>
+                      <span className="text-slate-400 text-[9px] sm:text-xs">{apiStats.protein_today} / {getDailyProteinTarget()}g</span>
                     </div>
                     <div className="w-full bg-slate-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-                      <div className="bg-red-600 h-full" style={{ width: `${Math.min(100, (apiStats.protein_today / 150) * 100)}%` }}></div>
+                      <div className="bg-red-600 h-full" style={{ width: `${Math.min(100, (apiStats.protein_today / getDailyProteinTarget()) * 100)}%` }}></div>
                     </div>
                   </div>
                   <div>
-                    <div className="flex justify-between items-center text-xs font-bold mb-1">
+                    <div className="flex justify-between items-center text-[10px] sm:text-xs font-bold mb-1">
                       <span className="text-blue-600 dark:text-blue-400 uppercase">Carbs</span>
-                      <span className="text-slate-400">{apiStats.carbs_today}g</span>
+                      <span className="text-slate-400 text-[9px] sm:text-xs">{apiStats.carbs_today} / {getDailyCarbsTarget()}g</span>
                     </div>
                     <div className="w-full bg-slate-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-                      <div className="bg-blue-600 h-full" style={{ width: `${Math.min(100, (apiStats.carbs_today / 250) * 100)}%` }}></div>
+                      <div className="bg-blue-600 h-full" style={{ width: `${Math.min(100, (apiStats.carbs_today / getDailyCarbsTarget()) * 100)}%` }}></div>
                     </div>
                   </div>
                   <div>
-                    <div className="flex justify-between items-center text-xs font-bold mb-1">
+                    <div className="flex justify-between items-center text-[10px] sm:text-xs font-bold mb-1">
                       <span className="text-purple-600 dark:text-purple-400 uppercase">Fats</span>
-                      <span className="text-slate-400">{apiStats.fat_today}g</span>
+                      <span className="text-slate-400 text-[9px] sm:text-xs">{apiStats.fat_today} / {getDailyFatTarget()}g</span>
                     </div>
                     <div className="w-full bg-slate-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
-                      <div className="bg-purple-600 h-full" style={{ width: `${Math.min(100, (apiStats.fat_today / 70) * 100)}%` }}></div>
+                      <div className="bg-purple-600 h-full" style={{ width: `${Math.min(100, (apiStats.fat_today / getDailyFatTarget()) * 100)}%` }}></div>
                     </div>
                   </div>
                 </div>
