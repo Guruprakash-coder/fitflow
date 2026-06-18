@@ -705,7 +705,7 @@ export default function App() {
             </div>
             <div>
               <span className="font-extrabold text-xl tracking-tight text-slate-800 dark:text-white">
-                Gs <span className="bg-gradient-to-r from-red-500 to-blue-500 bg-clip-text text-transparent">FitFlow</span>
+                <span className="bg-gradient-to-r from-red-500 to-blue-500 bg-clip-text text-transparent">FitFlow</span>
               </span>
               <span className="hidden md:inline-block ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-500/20">
                 PRO
