@@ -49,3 +49,24 @@ class WorkoutResponse(WorkoutBase):
 
     class Config:
         from_attributes = True
+
+# --- Food Log Schemas ---
+class FoodLogBase(BaseModel):
+    food_name: str
+    calories: int
+    protein: float
+    carbs: float
+    fat: float
+    grams: float
+    date: str  # YYYY-MM-DD format
+
+class FoodLogCreate(FoodLogBase):
+    pass
+
+class FoodLogResponse(FoodLogBase):
+    id: int
+    user_id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

@@ -7,8 +7,8 @@ from datetime import datetime, timedelta
 import os
 
 from api.database import get_db, engine, Base
-from api.models import User, Workout
-from api.schemas import UserCreate, UserLogin, WorkoutCreate, Token, UserResponse, WorkoutResponse
+from api.models import User, Workout, FoodLog
+from api.schemas import UserCreate, UserLogin, WorkoutCreate, Token, UserResponse, WorkoutResponse, FoodLogCreate, FoodLogResponse
 from api.auth import get_password_hash, verify_password, create_access_token, verify_access_token
 
 # Create tables in database (auto-run for SQLite/Postgres)
@@ -184,9 +184,56 @@ def get_stats(current_user: User = Depends(get_current_user), db: Session = Depe
                 elif (d1 - d2).days > 1:
                     break  # Streak broken
                     
+    # Calculate today's caloric intake
+    today_str = datetime.now().date().isoformat()
+    today_food = db.query(FoodLog).filter(FoodLog.user_id == current_user.id, FoodLog.date == today_str).all()
+    calories_today = sum(f.calories for f in today_food)
+    protein_today = round(sum(f.protein for f in today_food), 1)
+    carbs_today = round(sum(f.carbs for f in today_food), 1)
+    fat_today = round(sum(f.fat for f in today_food), 1)
+                    
     return {
         "total_workouts": total_workouts,
         "total_volume": total_volume,
         "popular_exercise": popular_exercise,
-        "streak": streak
+        "streak": streak,
+        "calories_today": calories_today,
+        "protein_today": protein_today,
+        "carbs_today": carbs_today,
+        "fat_today": fat_today
     }
+
+# --- FOOD LOG ENDPOINTS ---
+@app.post("/api/food-logs", response_model=FoodLogResponse)
+def create_food_log(food_data: FoodLogCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    db_food = FoodLog(
+        user_id=current_user.id,
+        food_name=food_data.food_name,
+        calories=food_data.calories,
+        protein=food_data.protein,
+        carbs=food_data.carbs,
+        fat=food_data.fat,
+        grams=food_data.grams,
+        date=food_data.date
+    )
+    db.add(db_food)
+    db.commit()
+    db.refresh(db_food)
+    return db_food
+
+@app.get("/api/food-logs", response_model=List[FoodLogResponse])
+def get_food_logs(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    food_logs = db.query(FoodLog).filter(FoodLog.user_id == current_user.id).order_by(FoodLog.date.desc(), FoodLog.id.desc()).all()
+    return food_logs
+
+@app.delete("/api/food-logs/{log_id}")
+def delete_food_log(log_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    db_food = db.query(FoodLog).filter(FoodLog.id == log_id, FoodLog.user_id == current_user.id).first()
+    if not db_food:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Food log not found or unauthorized"
+        )
+    db.delete(db_food)
+    db.commit()
+    return {"message": "Food log deleted successfully"}

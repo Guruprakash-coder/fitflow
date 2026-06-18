@@ -162,7 +162,11 @@ export default function App() {
     total_workouts: 0,
     total_volume: 0,
     popular_exercise: "None",
-    streak: 0
+    streak: 0,
+    calories_today: 0,
+    protein_today: 0,
+    carbs_today: 0,
+    fat_today: 0
   });
   const [workoutLogs, setWorkoutLogs] = useState([]);
   const [workoutLogForm, setWorkoutLogForm] = useState({
@@ -170,6 +174,22 @@ export default function App() {
     sets: 3,
     reps: 10,
     weight: 60,
+    date: new Date().toISOString().split("T")[0]
+  });
+
+  // --- DIET & CALORIE TRACKER STATE ---
+  const [foodSearchQuery, setFoodSearchQuery] = useState("");
+  const [foodSearchResults, setFoodSearchResults] = useState([]);
+  const [isSearchingFood, setIsSearchingFood] = useState(false);
+  const [foodLogs, setFoodLogs] = useState([]);
+  const [servingInputs, setServingInputs] = useState({}); // { productCode: grams }
+  const [manualFoodForm, setManualFoodForm] = useState({
+    food_name: "",
+    calories: "",
+    protein: "",
+    carbs: "",
+    fat: "",
+    grams: 100,
     date: new Date().toISOString().split("T")[0]
   });
 
@@ -227,8 +247,10 @@ export default function App() {
     // If authenticated, fetch from API
     if (token) {
       fetchBackendData();
+    } else if (isGuest) {
+      loadGuestData();
     }
-  }, [token]);
+  }, [token, isGuest]);
 
   // --- TIMER LOGIC ---
   useEffect(() => {
@@ -264,7 +286,7 @@ export default function App() {
         setApiStats(statsData);
       }
 
-      // Fetch logs
+      // Fetch workout logs
       const logsRes = await fetch("/api/workouts", {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -272,9 +294,29 @@ export default function App() {
         const logsData = await logsRes.json();
         setWorkoutLogs(logsData);
       }
+
+      // Fetch food logs
+      const foodLogsRes = await fetch("/api/food-logs", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (foodLogsRes.ok) {
+        const foodLogsData = await foodLogsRes.json();
+        setFoodLogs(foodLogsData);
+      }
     } catch (err) {
       console.error("Error synchronizing backend data:", err);
     }
+  };
+
+  // --- LOCAL STORAGE DATA LOAD FOR GUEST ---
+  const loadGuestData = () => {
+    const localWorkouts = JSON.parse(localStorage.getItem("fitflow_guest_workouts") || "[]");
+    setWorkoutLogs(localWorkouts);
+
+    const localFoods = JSON.parse(localStorage.getItem("fitflow_guest_foods") || "[]");
+    setFoodLogs(localFoods);
+
+    recalculateGuestStats(localWorkouts, localFoods);
   };
 
   // --- REGISTRATION / LOGIN ---
@@ -332,6 +374,8 @@ export default function App() {
     setToken("");
     setUser(null);
     setIsGuest(false);
+    setFoodLogs([]);
+    setWorkoutLogs([]);
     setActiveTab("dashboard");
   };
 
@@ -359,7 +403,6 @@ export default function App() {
     };
 
     if (isGuest) {
-      // Save locally for guest
       const localLogs = JSON.parse(localStorage.getItem("fitflow_guest_workouts") || "[]");
       const guestLog = {
         ...newLog,
@@ -372,7 +415,7 @@ export default function App() {
       setWorkoutLogs(updated);
 
       // Recalculate local mock stats
-      recalculateGuestStats(updated);
+      recalculateGuestStats(updated, foodLogs);
       alert("Workout recorded locally (Guest Mode)!");
     } else {
       // Save to database
@@ -403,7 +446,7 @@ export default function App() {
       const updated = localLogs.filter((w) => w.id !== logId);
       localStorage.setItem("fitflow_guest_workouts", JSON.stringify(updated));
       setWorkoutLogs(updated);
-      recalculateGuestStats(updated);
+      recalculateGuestStats(updated, foodLogs);
     } else {
       try {
         const res = await fetch(`/api/workouts/${logId}`, {
@@ -418,22 +461,215 @@ export default function App() {
     }
   };
 
-  const recalculateGuestStats = (logs) => {
-    const totalW = logs.length;
-    const totalV = logs.reduce((acc, curr) => acc + curr.sets * curr.reps * curr.weight, 0);
+  // --- DIET MANAGEMENT (API QUERY & ACTIONS) ---
+  const handleFoodSearch = async (e) => {
+    e.preventDefault();
+    if (!foodSearchQuery.trim()) return;
+    setIsSearchingFood(true);
+    try {
+      const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(foodSearchQuery)}&search_simple=1&action=process&json=1&page_size=12`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data && data.products) {
+        const parsedProducts = data.products
+          .map((p) => {
+            const nut = p.nutriments || {};
+            // kcal per 100g
+            const kcal = Math.round(nut["energy-kcal_100g"] || nut["energy-kcal"] || 0);
+            const protein = parseFloat((nut.proteins_100g || 0).toFixed(1));
+            const carbs = parseFloat((nut.carbohydrates_100g || 0).toFixed(1));
+            const fat = parseFloat((nut.fat_100g || 0).toFixed(1));
+            return {
+              code: p.code,
+              name: p.product_name || p.generic_name || "Unknown Food",
+              brand: p.brands ? p.brands.split(",")[0] : "",
+              kcal,
+              protein,
+              carbs,
+              fat
+            };
+          })
+          .filter((f) => f.kcal > 0);
+        setFoodSearchResults(parsedProducts);
+
+        // Initialize serving input states (100g default)
+        const initialServings = {};
+        parsedProducts.forEach((p) => {
+          initialServings[p.code] = 100;
+        });
+        setServingInputs(initialServings);
+      } else {
+        setFoodSearchResults([]);
+      }
+    } catch (err) {
+      console.error("Error searching food API:", err);
+      alert("Error searching food database. Check your internet connection.");
+    } finally {
+      setIsSearchingFood(false);
+    }
+  };
+
+  const handleAddFoodLog = async (foodItem, servingGrams) => {
+    const valGrams = parseFloat(servingGrams);
+    if (isNaN(valGrams) || valGrams <= 0) {
+      alert("Please enter a valid weight in grams!");
+      return;
+    }
+    const multiplier = valGrams / 100;
+    const newLog = {
+      food_name: foodItem.brand ? `${foodItem.name} (${foodItem.brand})` : foodItem.name,
+      calories: Math.round(foodItem.kcal * multiplier),
+      protein: parseFloat((foodItem.protein * multiplier).toFixed(1)),
+      carbs: parseFloat((foodItem.carbs * multiplier).toFixed(1)),
+      fat: parseFloat((foodItem.fat * multiplier).toFixed(1)),
+      grams: valGrams,
+      date: new Date().toISOString().split("T")[0]
+    };
+
+    if (isGuest) {
+      const guestFoods = JSON.parse(localStorage.getItem("fitflow_guest_foods") || "[]");
+      const savedItem = { ...newLog, id: Date.now(), user_id: 0, created_at: new Date().toISOString() };
+      const updated = [savedItem, ...guestFoods];
+      localStorage.setItem("fitflow_guest_foods", JSON.stringify(updated));
+      setFoodLogs(updated);
+      recalculateGuestStats(workoutLogs, updated);
+      alert(`Logged: ${newLog.food_name} (${valGrams}g) locally!`);
+    } else {
+      try {
+        const res = await fetch("/api/food-logs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(newLog)
+        });
+        if (res.ok) {
+          alert(`Logged: ${newLog.food_name} (${valGrams}g) synced to Neon Database!`);
+          fetchBackendData();
+        } else {
+          throw new Error();
+        }
+      } catch (err) {
+        alert("Failed to sync food log to database.");
+      }
+    }
+  };
+
+  const handleManualFoodSubmit = async (e) => {
+    e.preventDefault();
+    const grams = parseFloat(manualFoodForm.grams);
+    if (isNaN(grams) || grams <= 0) {
+      alert("Please enter a valid weight in grams!");
+      return;
+    }
+    const newLog = {
+      food_name: manualFoodForm.food_name,
+      calories: parseInt(manualFoodForm.calories),
+      protein: parseFloat(manualFoodForm.protein || 0),
+      carbs: parseFloat(manualFoodForm.carbs || 0),
+      fat: parseFloat(manualFoodForm.fat || 0),
+      grams,
+      date: manualFoodForm.date
+    };
+
+    if (isGuest) {
+      const guestFoods = JSON.parse(localStorage.getItem("fitflow_guest_foods") || "[]");
+      const savedItem = { ...newLog, id: Date.now(), user_id: 0, created_at: new Date().toISOString() };
+      const updated = [savedItem, ...guestFoods];
+      localStorage.setItem("fitflow_guest_foods", JSON.stringify(updated));
+      setFoodLogs(updated);
+      recalculateGuestStats(workoutLogs, updated);
+      alert("Manual food logged locally!");
+    } else {
+      try {
+        const res = await fetch("/api/food-logs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(newLog)
+        });
+        if (res.ok) {
+          alert("Manual food logged successfully!");
+          fetchBackendData();
+        } else {
+          throw new Error();
+        }
+      } catch (err) {
+        alert("Failed to save manual food log.");
+      }
+    }
+
+    setManualFoodForm({
+      food_name: "",
+      calories: "",
+      protein: "",
+      carbs: "",
+      fat: "",
+      grams: 100,
+      date: new Date().toISOString().split("T")[0]
+    });
+  };
+
+  const handleDeleteFoodLog = async (logId) => {
+    if (isGuest) {
+      const guestFoods = JSON.parse(localStorage.getItem("fitflow_guest_foods") || "[]");
+      const updated = guestFoods.filter((f) => f.id !== logId);
+      localStorage.setItem("fitflow_guest_foods", JSON.stringify(updated));
+      setFoodLogs(updated);
+      recalculateGuestStats(workoutLogs, updated);
+    } else {
+      try {
+        const res = await fetch(`/api/food-logs/${logId}`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (res.ok) {
+          fetchBackendData();
+        } else {
+          throw new Error();
+        }
+      } catch (err) {
+        alert("Failed to delete food log.");
+      }
+    }
+  };
+
+  // --- RECOMPUTING DIET STATS IN GUEST MODE ---
+  const recalculateGuestStats = (workouts, foods) => {
+    const totalW = workouts.length;
+    const totalV = workouts.reduce((acc, curr) => acc + curr.sets * curr.reps * curr.weight, 0);
 
     const counts = {};
-    logs.forEach((w) => {
+    workouts.forEach((w) => {
       counts[w.exercise_name] = (counts[w.exercise_name] || 0) + 1;
     });
     const popEx = Object.keys(counts).reduce((a, b) => (counts[a] > counts[b] ? a : b), "None");
+
+    // Food calculations
+    const todayStr = new Date().toISOString().split("T")[0];
+    const todayFood = foods.filter((f) => f.date === todayStr);
+    const caloriesToday = todayFood.reduce((sum, f) => sum + f.calories, 0);
+    const proteinToday = roundToDecimal(todayFood.reduce((sum, f) => sum + f.protein, 0), 1);
+    const carbsToday = roundToDecimal(todayFood.reduce((sum, f) => sum + f.carbs, 0), 1);
+    const fatToday = roundToDecimal(todayFood.reduce((sum, f) => sum + f.fat, 0), 1);
 
     setApiStats({
       total_workouts: totalW,
       total_volume: totalV,
       popular_exercise: popEx,
-      streak: totalW > 0 ? 1 : 0 // simple placeholder
+      streak: totalW > 0 ? 1 : 0,
+      calories_today: caloriesToday,
+      protein_today: proteinToday,
+      carbs_today: carbsToday,
+      fat_today: fatToday
     });
+  };
+
+  const roundToDecimal = (val, place) => {
+    return parseFloat(val.toFixed(place));
   };
 
   // --- CALORIE & MACRO CALCULATIONS ---
@@ -456,10 +692,6 @@ export default function App() {
     if (calcGoal === "lose") targetCal = Math.max(1200, tdee - 500);
     else if (calcGoal === "gain") targetCal = tdee + 300;
 
-    // Macro splits:
-    // Protein: 2.0g per kg (4 kcal/g)
-    // Fat: 0.9g per kg (9 kcal/g)
-    // Carbs: Rest of the calories (4 kcal/g)
     const proteinGrams = Math.round(calcWeight * 2.0);
     const fatGrams = Math.round(calcWeight * 0.9);
 
@@ -663,7 +895,7 @@ export default function App() {
     const updated = [guestLog, ...localLogs];
     localStorage.setItem("fitflow_guest_workouts", JSON.stringify(updated));
     setWorkoutLogs(updated);
-    recalculateGuestStats(updated);
+    recalculateGuestStats(updated, foodLogs);
   };
 
   // --- WEIGHT LOGGING (LOCAL GRAPH) ---
@@ -686,10 +918,17 @@ export default function App() {
     setIsGuest(true);
     setToken("");
     setUser({ name: "Guest User", email: "guest@fitflow.app" });
-    const localLogs = JSON.parse(localStorage.getItem("fitflow_guest_workouts") || "[]");
-    setWorkoutLogs(localLogs);
-    recalculateGuestStats(localLogs);
+    loadGuestData();
     setActiveTab("dashboard");
+  };
+
+  // Get current daily calorie target (default to 2000)
+  const getDailyCalorieTarget = () => {
+    const saved = localStorage.getItem("fitflow_profile");
+    if (saved) {
+      return JSON.parse(saved).targetCal || 2000;
+    }
+    return 2000;
   };
 
   return (
@@ -792,9 +1031,10 @@ export default function App() {
           {[
             { id: "dashboard", label: "Dashboard", icon: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" },
             { id: "calculator", label: "Macro Calc", icon: "M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" },
+            { id: "diet", label: "Diet Tracker", icon: "M3 3h18v18H3V3zm3 3v10h12V6H6zm4 2h4v2h-4V8z" },
             { id: "workout-generator", label: "Workout Gen", icon: "M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" },
             { id: "active-workout", label: "Workout Mode", icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" },
-            { id: "history", label: "Workout Logs", icon: "M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" }
+            { id: "history", label: "Workout Logs", icon: "M12 6.253v13m0-13C10.832 5.477 9.246 5s-3.332.477-4.5 1.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253" }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -805,9 +1045,6 @@ export default function App() {
                   : "text-slate-500 dark:text-gray-400 hover:text-slate-700 dark:hover:text-gray-200 hover:bg-slate-200/50 dark:hover:bg-gray-800/40 border-transparent"
               }`}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={tab.icon} />
-              </svg>
               <span>{tab.label}</span>
             </button>
           ))}
@@ -825,7 +1062,7 @@ export default function App() {
                   {authMode === "login" ? "Welcome Back" : "Join FitFlow"}
                 </h2>
                 <p className="text-sm text-slate-500 dark:text-gray-400">
-                  {authMode === "login" ? "Sign in to synchronize workouts on Neon Postgres" : "Create an account to keep your fitness dashboard up to date"}
+                  {authMode === "login" ? "Sign in to synchronize data on Neon Postgres" : "Create an account to keep your fitness dashboard up to date"}
                 </p>
               </div>
 
@@ -942,25 +1179,20 @@ export default function App() {
                     >
                       Generate New Routine
                     </button>
-                    {!user && (
-                      <button
-                        onClick={() => setActiveTab("login")}
-                        className="px-4 py-2 bg-slate-200/80 hover:bg-slate-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-slate-700 dark:text-gray-300 text-xs font-bold rounded-xl border border-slate-300/50 dark:border-gray-700 transition-all"
-                      >
-                        Enable Cloud Storage
-                      </button>
-                    )}
+                    <button
+                      onClick={() => setActiveTab("diet")}
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-md transition-all"
+                    >
+                      Track Daily Calories
+                    </button>
                   </div>
                 </div>
                 <div className="w-full md:w-auto flex flex-col items-center justify-center p-4 bg-slate-100/50 dark:bg-gray-950/40 rounded-2xl border border-slate-200 dark:border-gray-800/80 max-w-[240px] mx-auto md:mx-0">
                   <span className="text-xs font-bold text-slate-400 dark:text-gray-500 uppercase tracking-widest mb-1">DAILY TARGET</span>
                   <span className="text-4xl font-black text-red-600 dark:text-red-400">
-                    {localStorage.getItem("fitflow_profile") 
-                      ? JSON.parse(localStorage.getItem("fitflow_profile")).targetCal 
-                      : "2,000"
-                    }
+                    {getDailyCalorieTarget()}
                   </span>
-                  <span className="text-xs text-slate-500 dark:text-gray-400 mt-1">kcal (Macros setup below)</span>
+                  <span className="text-xs text-slate-500 dark:text-gray-400 mt-1">kcal (TDEE Caloric Target)</span>
                 </div>
               </div>
             </div>
@@ -969,7 +1201,7 @@ export default function App() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { label: "Workouts Completed", val: apiStats.total_workouts, desc: "Total sessions logged", color: "from-red-500 to-red-700" },
-                { label: "Total Volume", val: `${apiStats.total_volume} kg`, desc: "Accumulated weight", color: "from-blue-500 to-blue-700" },
+                { label: "Daily Calories Eaten", val: `${apiStats.calories_today} kcal`, desc: `Target: ${getDailyCalorieTarget()} kcal`, color: "from-blue-500 to-blue-700" },
                 { label: "Top Exercise", val: apiStats.popular_exercise, desc: "Most logged movement", color: "from-purple-500 to-purple-700" },
                 { label: "Workout Streak", val: `${apiStats.streak} Days`, desc: "Consecutive log days", color: "from-orange-500 to-yellow-500" }
               ].map((stat, i) => (
@@ -983,6 +1215,40 @@ export default function App() {
                   <span className="text-[10px] md:text-xs text-slate-500 dark:text-gray-400 font-medium">{stat.desc}</span>
                 </div>
               ))}
+            </div>
+
+            {/* CALORIC BALANCE PROGRESS BOARD */}
+            <div className="glass-panel rounded-3xl p-6 shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/5 rounded-full blur-3xl"></div>
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 flex items-center">
+                📊 Daily Caloric Balance
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                <div className="text-center md:text-left">
+                  <div className="text-xs font-semibold text-slate-400 dark:text-gray-500">CONSUMED CALORIES</div>
+                  <div className="text-3xl font-black text-blue-600 dark:text-blue-400 mt-1">{apiStats.calories_today} <span className="text-xs text-slate-400 dark:text-gray-500">kcal</span></div>
+                </div>
+                <div className="text-center">
+                  <div className="text-xs font-semibold text-slate-400 dark:text-gray-500">NET STATUS</div>
+                  <div className="text-3xl font-black text-slate-800 dark:text-white mt-1">
+                    {getDailyCalorieTarget() - apiStats.calories_today >= 0 ? (
+                      <span className="text-green-600 dark:text-green-400">-{getDailyCalorieTarget() - apiStats.calories_today} <span className="text-xs">kcal (Deficit)</span></span>
+                    ) : (
+                      <span className="text-red-600 dark:text-red-400">+{apiStats.calories_today - getDailyCalorieTarget()} <span className="text-xs">kcal (Surplus)</span></span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-center md:text-right">
+                  <div className="text-xs font-semibold text-slate-400 dark:text-gray-500">DAILY TARGET LIMIT</div>
+                  <div className="text-3xl font-black text-slate-600 dark:text-gray-300 mt-1">{getDailyCalorieTarget()} <span className="text-xs text-slate-400 dark:text-gray-500">kcal</span></div>
+                </div>
+              </div>
+              <div className="w-full bg-slate-200 dark:bg-gray-800 h-3.5 rounded-full mt-6 overflow-hidden relative shadow-inner">
+                <div 
+                  className={`h-full rounded-full transition-all duration-500 ${apiStats.calories_today > getDailyCalorieTarget() ? "bg-red-600" : "bg-gradient-to-r from-blue-500 to-red-500"}`}
+                  style={{ width: `${Math.min(100, (apiStats.calories_today / getDailyCalorieTarget()) * 100)}%` }}
+                ></div>
+              </div>
             </div>
 
             {/* WATER TRACKER & WEIGHT GRAPH */}
@@ -1346,7 +1612,253 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 4: WORKOUT GENERATOR */}
+        {/* TAB 4: DIET & CALORIE TRACKER */}
+        {activeTab === "diet" && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fadeIn">
+            {/* SEARCH PANEL */}
+            <div className="lg:col-span-1 glass-panel rounded-3xl p-6 shadow-xl space-y-6">
+              <div>
+                <h2 className="text-xl font-extrabold text-slate-800 dark:text-white mb-2">Diet & Meal Tracker</h2>
+                <p className="text-xs text-slate-500 dark:text-gray-400">
+                  Search millions of food products dynamically from the Open Food Facts API (no key required!).
+                </p>
+              </div>
+
+              {/* SEARCH INPUT */}
+              <form onSubmit={handleFoodSearch} className="flex gap-2">
+                <input
+                  type="text"
+                  required
+                  value={foodSearchQuery}
+                  onChange={(e) => setFoodSearchQuery(e.target.value)}
+                  placeholder="Search e.g. Banana, Milk..."
+                  className="flex-grow bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
+                />
+                <button
+                  type="submit"
+                  disabled={isSearchingFood}
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white active:scale-95 transition-all flex items-center justify-center min-w-[70px]"
+                >
+                  {isSearchingFood ? "..." : "Search"}
+                </button>
+              </form>
+
+              {/* SEARCH RESULTS LIST */}
+              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                {foodSearchResults.length > 0 ? (
+                  foodSearchResults.map((food) => (
+                    <div key={food.code} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-gray-950/40 border border-slate-200/50 dark:border-gray-900 space-y-3">
+                      <div>
+                        <span className="font-extrabold text-sm text-slate-800 dark:text-white block truncate">{food.name}</span>
+                        {food.brand && <span className="text-[10px] text-slate-400 dark:text-gray-500 block font-semibold">{food.brand}</span>}
+                        <div className="flex gap-3 text-[10px] text-slate-500 dark:text-gray-400 font-semibold mt-1">
+                          <span>🔥 {food.kcal} kcal/100g</span>
+                          <span>•</span>
+                          <span>🥩 P: {food.protein}g</span>
+                          <span>•</span>
+                          <span>🍞 C: {food.carbs}g</span>
+                          <span>•</span>
+                          <span>🍳 F: {food.fat}g</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex gap-2 items-center pt-2 border-t border-slate-200/40 dark:border-gray-900/60">
+                        <div className="flex items-center space-x-1 flex-grow">
+                          <input
+                            type="number"
+                            min="1"
+                            value={servingInputs[food.code] || 100}
+                            onChange={(e) => setServingInputs({ ...servingInputs, [food.code]: e.target.value })}
+                            className="w-16 bg-slate-200/40 dark:bg-gray-900 border border-slate-200 dark:border-gray-800 rounded-lg text-center py-1 text-xs text-slate-800 dark:text-white"
+                          />
+                          <span className="text-[10px] text-slate-400 font-bold">g</span>
+                        </div>
+                        <button
+                          onClick={() => handleAddFoodLog(food, servingInputs[food.code] || 100)}
+                          className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold transition-all"
+                        >
+                          Log Meal
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : foodSearchQuery && !isSearchingFood ? (
+                  <div className="text-center py-8 text-slate-400 dark:text-gray-500 text-xs">
+                    No results found. Try a different query or log manually below.
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-slate-400 dark:text-gray-500 text-xs">
+                    Search for a food item to load macro estimates.
+                  </div>
+                )}
+              </div>
+
+              {/* MANUAL DIET LOGGER */}
+              <div className="border-t border-slate-200 dark:border-gray-800/80 pt-4">
+                <h3 className="text-sm font-black text-slate-700 dark:text-gray-300 mb-3 uppercase tracking-wider">Manual Diet Logger</h3>
+                <form onSubmit={handleManualFoodSubmit} className="space-y-3">
+                  <div>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Food item name"
+                      value={manualFoodForm.food_name}
+                      onChange={(e) => setManualFoodForm({ ...manualFoodForm, food_name: e.target.value })}
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-xs text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="number"
+                      required
+                      placeholder="Calories (kcal)"
+                      value={manualFoodForm.calories}
+                      onChange={(e) => setManualFoodForm({ ...manualFoodForm, calories: e.target.value })}
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-xs text-slate-800 dark:text-white focus:outline-none"
+                    />
+                    <input
+                      type="number"
+                      required
+                      placeholder="Portion (g)"
+                      value={manualFoodForm.grams}
+                      onChange={(e) => setManualFoodForm({ ...manualFoodForm, grams: e.target.value })}
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-xs text-slate-800 dark:text-white focus:outline-none"
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="Prot (g)"
+                      value={manualFoodForm.protein}
+                      onChange={(e) => setManualFoodForm({ ...manualFoodForm, protein: e.target.value })}
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-2 py-2 text-xs text-slate-800 dark:text-white"
+                    />
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="Carb (g)"
+                      value={manualFoodForm.carbs}
+                      onChange={(e) => setManualFoodForm({ ...manualFoodForm, carbs: e.target.value })}
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-2 py-2 text-xs text-slate-800 dark:text-white"
+                    />
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="Fat (g)"
+                      value={manualFoodForm.fat}
+                      onChange={(e) => setManualFoodForm({ ...manualFoodForm, fat: e.target.value })}
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-2 py-2 text-xs text-slate-800 dark:text-white"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full py-2 bg-slate-200 hover:bg-slate-300 dark:bg-gray-800 dark:hover:bg-gray-750 text-slate-700 dark:text-white rounded-xl text-xs font-bold transition-all uppercase tracking-wider"
+                  >
+                    Add Custom Food
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* LOGGED FOOD HISTORY */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* DIET BALANCER GAUGES */}
+              <div className="glass-panel rounded-3xl p-6 shadow-xl space-y-4">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white">Daily Macronutrients Balance</h3>
+                
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <div className="flex justify-between items-center text-xs font-bold mb-1">
+                      <span className="text-red-600 dark:text-red-400 uppercase">Protein</span>
+                      <span className="text-slate-400">{apiStats.protein_today}g</span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-red-600 h-full" style={{ width: `${Math.min(100, (apiStats.protein_today / 150) * 100)}%` }}></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center text-xs font-bold mb-1">
+                      <span className="text-blue-600 dark:text-blue-400 uppercase">Carbs</span>
+                      <span className="text-slate-400">{apiStats.carbs_today}g</span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-blue-600 h-full" style={{ width: `${Math.min(100, (apiStats.carbs_today / 250) * 100)}%` }}></div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center text-xs font-bold mb-1">
+                      <span className="text-purple-600 dark:text-purple-400 uppercase">Fats</span>
+                      <span className="text-slate-400">{apiStats.fat_today}g</span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+                      <div className="bg-purple-600 h-full" style={{ width: `${Math.min(100, (apiStats.fat_today / 70) * 100)}%` }}></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* LOGS LIST */}
+              <div className="glass-panel rounded-3xl p-6 shadow-xl flex flex-col justify-between min-h-[300px]">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Logged Food History</h3>
+                  <p className="text-xs text-slate-500 dark:text-gray-400 mb-6">
+                    A list of everything logged under your profile.
+                  </p>
+
+                  <div className="space-y-3 max-h-[360px] overflow-y-auto pr-2">
+                    {foodLogs.length > 0 ? (
+                      foodLogs.map((log) => (
+                        <div
+                          key={log.id}
+                          className="flex justify-between items-center p-4 rounded-2xl bg-slate-100/50 dark:bg-gray-950/40 border border-slate-200/50 dark:border-gray-900 hover:border-red-500/10 transition-colors"
+                        >
+                          <div>
+                            <span className="font-extrabold text-sm text-slate-800 dark:text-white block">{log.food_name}</span>
+                            <div className="flex space-x-2 text-[10px] text-slate-400 dark:text-gray-550 font-semibold mt-1">
+                              <span>{log.date}</span>
+                              <span>•</span>
+                              <span>{log.grams}g portion</span>
+                              <span>•</span>
+                              <span className="text-blue-600 dark:text-blue-400">{log.calories} kcal</span>
+                              {log.protein > 0 && (
+                                <>
+                                  <span>•</span>
+                                  <span className="text-slate-500">P: {log.protein}g</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => handleDeleteFoodLog(log.id)}
+                            className="p-2 bg-slate-200/50 hover:bg-red-500/10 dark:bg-gray-900 dark:hover:bg-red-500/10 border border-slate-300/50 dark:border-gray-800 rounded-xl text-slate-500 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 transition-colors"
+                            title="Delete Meal Log"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-center py-12 text-slate-400 dark:text-gray-500 text-xs">
+                        No food items logged today. Use the search to add items!
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="mt-8 pt-4 border-t border-slate-200 dark:border-gray-800/80 text-[10px] text-slate-400 dark:text-gray-500 flex justify-between">
+                  <span>Synced under active profile session</span>
+                  <span>FitFlow Calories Engine v1.0</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: WORKOUT GENERATOR */}
         {activeTab === "workout-generator" && (
           <div className="space-y-8 animate-fadeIn">
             {/* INPUT PANEL */}
@@ -1463,7 +1975,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 5: ACTIVE WORKOUT */}
+        {/* TAB 6: ACTIVE WORKOUT */}
         {activeTab === "active-workout" && (
           <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn">
             {activeWorkoutList.length > 0 ? (
@@ -1648,7 +2160,7 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 6: WORKOUT LOGS */}
+        {/* TAB 7: WORKOUT LOGS */}
         {activeTab === "history" && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-fadeIn">
             {/* MANUAL LOG */}
@@ -1702,7 +2214,7 @@ export default function App() {
                       step="0.5"
                       value={workoutLogForm.weight}
                       onChange={(e) => setWorkoutLogForm({ ...workoutLogForm, weight: e.target.value })}
-                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-red-500 transition-colors"
+                      className="w-full bg-slate-100/50 dark:bg-gray-950/60 border border-slate-200 dark:border-gray-800 rounded-xl px-4 py-2 text-sm text-slate-800 dark:text-white focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1751,7 +2263,7 @@ export default function App() {
                             {log.weight > 0 && (
                               <>
                                 <span>•</span>
-                                <span className="text-red-600 dark:text-red-450">{log.weight} kg</span>
+                                <span className="text-red-600 dark:text-red-455">{log.weight} kg</span>
                               </>
                             )}
                           </div>
